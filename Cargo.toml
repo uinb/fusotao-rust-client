@@ -15,25 +15,24 @@ ws = { version = "0.9.1", optional = true, features = ["ssl"] }
 codec = { package = 'parity-scale-codec', version = "2.0.0", default-features = false,  features = ['derive']}
 
 # Substrate dependencies
-sp-core = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", features = ["full_crypto"] }
-metadata = { version = "14.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", package = "frame-metadata" }
-sp-version = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", package = "sp-version", optional = true }
-balances = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", package = "pallet-balances", optional = true }
-staking = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", package = "pallet-staking", optional = true }
-system = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", package = "frame-system", optional = true }
-transaction-payment = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", package = "pallet-transaction-payment", optional = true }
-sp-rpc = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", optional = true }
-sp-runtime = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master" }
-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", package = "frame-support", branch = "master" }
-sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master" }
+sp-core = { version = "3.0.0", default-features = false, features = ["full_crypto"] }
+metadata = { version = "13.0.0", default-features = false, package = "frame-metadata" }
+sp-version = { version = "3.0.0" , package = "sp-version", optional = true }
+balances = { version = "3.0.0", package = "pallet-balances", optional = true }
+staking = { version = "3.0.0", package = "pallet-staking", optional = true }
+system = { version = "3.0.0", package = "frame-system", optional = true }
+transaction-payment = { version = "3.0.0", default-features = false, package = "pallet-transaction-payment", optional = true }
+sp-rpc = { version = "3.0.0", default-features = false, optional = true }
+sp-runtime = { version = "3.0.0", default-features = false }
+support = { version = "3.0.0", default-features = false, package = "frame-support" }
+sp-std = { version = "3.0.0", default-features = false }
 # need to add this for the app_crypto macro
-sp-application-crypto = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", features = ["full_crypto"] }
-
+sp-application-crypto = { version = "3.0.0", default-features = false, features = ["full_crypto"] }
 
 [dev-dependencies]
 env_logger = "0.9"
-node-template-runtime = { git = "https://github.com/scs/substrate-api-client-test-node", branch = "master" }
-keyring = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", package = "sp-keyring" }
+#node-template-runtime = { git = "https://github.com/scs/substrate-api-client-test-node", branch = "master" }
+keyring = { version = "3.0.0", package = "sp-keyring" }
 clap = { version = "2.33", features = ["yaml"] }
 
 
