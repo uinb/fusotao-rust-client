@@ -93,5 +93,7 @@ pub struct AccountInfoGen<Index, AccountData> {
     pub data: AccountData,
 }
 
-pub type AccountData = AccountDataGen<Balance>;
-pub type AccountInfo = AccountInfoGen<Index, AccountData>;
+pub type AccountData = balances::AccountData<Balance>;
+pub type AccountInfo = system::AccountInfo<Index, AccountData>;
+// pub type AccountData = AccountDataGen<Balance>;
+// pub type AccountInfo = AccountInfoGen<Index, AccountData>;
