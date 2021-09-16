@@ -15,7 +15,7 @@ ws = { version = "0.9.1", optional = true, features = ["ssl"] }
 codec = { package = 'parity-scale-codec', version = "2.0.0", default-features = false,  features = ['derive']}
 
 # Substrate dependencies
-sp-core = { version = "3.0.0", default-features = false, features = ["full_crypto"] }
+sp-core = { version = "3.0.0", default-features = false }
 metadata = { version = "13.0.0", default-features = false, package = "frame-metadata" }
 sp-version = { version = "3.0.0" , package = "sp-version", optional = true }
 balances = { version = "3.0.0", package = "pallet-balances", optional = true }

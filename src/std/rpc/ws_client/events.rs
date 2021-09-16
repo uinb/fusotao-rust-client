@@ -78,6 +78,7 @@ pub struct EventsDecoder {
 impl TryFrom<Metadata> for EventsDecoder {
     type Error = EventsError;
 
+    // TODO add schema
     fn try_from(metadata: Metadata) -> Result<Self, Self::Error> {
         let mut decoder = Self {
             metadata,
@@ -100,10 +101,17 @@ impl TryFrom<Metadata> for EventsDecoder {
         decoder.register_type_size::<u64>("AuthorityWeight")?;
         decoder.register_type_size::<u32>("MemberCount")?;
         decoder.register_type_size::<AccountId>("AccountId")?;
+        decoder.register_type_size::<AccountId>("T::AccountId")?;
         decoder.register_type_size::<BlockNumber>("BlockNumber")?;
+        decoder.register_type_size::<BlockNumber>("T::BlockNumber")?;
         decoder.register_type_size::<Moment>("Moment")?;
+        decoder.register_type_size::<Moment>("T::Moment")?;
         decoder.register_type_size::<Hash>("Hash")?;
         decoder.register_type_size::<Balance>("Balance")?;
+        decoder.register_type_size::<Balance>("AmountOfToken<T>")?;
+        decoder.register_type_size::<Balance>("AmountOfCoin<T>")?;
+        decoder.register_type_size::<u32>("T::VoteIndex")?;
+        // decoder.register_type_size::<Vec<(sp_core::ed25519::Public, u64)>>("AuthorityList")?;
         // VoteThreshold enum index
         decoder.register_type_size::<u8>("VoteThreshold")?;
 
@@ -178,9 +186,11 @@ impl EventsDecoder {
                     }
                     if let Some(size) = self.type_sizes.get(name) {
                         let mut buf = vec![0; *size];
+                        log::debug!("type_name={:?}, size={:?}", name, size);
                         input.read(&mut buf)?;
                         output.write(&buf);
                     } else {
+                        // TODO
                         return Err(EventsError::TypeSizeUnavailable(name.to_owned()));
                     }
                 }
@@ -196,14 +206,13 @@ impl EventsDecoder {
         log::debug!("Decoding compact len: {:?}", input);
         let compact_len = <Compact<u32>>::decode(input)?;
         let len = compact_len.0 as usize;
-
+        log::debug!("events count?? => {:?}", len);
         let mut r = Vec::new();
         for _ in 0..len {
             // decode EventRecord
             log::debug!("Decoding phase: {:?}", input);
             let phase = Phase::decode(input)?;
             let module_variant = input.read_byte()?;
-
             let module = self.metadata.module_with_events(module_variant)?;
             let event = if module.name() == "System" {
                 log::debug!("Decoding system event, intput: {:?}", input);
@@ -233,7 +242,7 @@ impl EventsDecoder {
                     module.name(),
                     event_metadata.name
                 );
-
+                log::debug!("{:?}", event_metadata);
                 let mut event_data = Vec::<u8>::new();
                 self.decode_raw_bytes(&event_metadata.arguments(), input, &mut event_data)?;
 
@@ -253,9 +262,9 @@ impl EventsDecoder {
 
             // topics come after the event data in EventRecord
             log::debug!("Phase {:?}, Event: {:?}", phase, event);
-
             log::debug!("Decoding topics {:?}", input);
-            let _topics = Vec::<crate::Hash>::decode(input)?;
+            let topics = Vec::<crate::Hash>::decode(input)?;
+            log::debug!("Topics: {:?}", topics);
             r.push((phase, event));
         }
         Ok(r)

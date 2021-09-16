@@ -518,6 +518,26 @@ pub enum EventArg {
     Tuple(Vec<EventArg>),
 }
 
+// FIXME just a quick naive fix
+struct EventArgResolver(HashMap<String, String>);
+
+impl EventArgResolver {
+    fn new() -> Self {
+        EventArgResolver(HashMap::new())
+    }
+
+    fn set_type_alias(&mut self, alias: &str, real: &str) {
+        self.0.insert(alias.to_string(), real.to_string());
+    }
+
+    fn get_alias(&self, n: &str) -> String {
+        self.0
+            .get(n)
+            .map(|v| v.to_string())
+            .unwrap_or(n.to_string())
+    }
+}
+
 impl FromStr for EventArg {
     type Err = ConversionError;
 
@@ -595,7 +615,9 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         let mut modules_with_calls = HashMap::new();
         let mut modules_with_events = HashMap::new();
         let mut modules_with_errors = HashMap::new();
-
+        // TODO
+        let mut alias_resolver = EventArgResolver::new();
+        alias_resolver.set_type_alias("AuthorityList", "Vec<(AuthorityId, u64)>");
         for module in convert(meta.modules)?.into_iter() {
             let module_name = convert(module.name.clone())?;
 
@@ -637,7 +659,7 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
             if let Some(events) = module.event {
                 let mut event_map = HashMap::new();
                 for (index, event) in convert(events)?.into_iter().enumerate() {
-                    event_map.insert(index as u8, convert_event(event)?);
+                    event_map.insert(index as u8, convert_event(event, &alias_resolver)?);
                 }
                 modules_with_events.insert(
                     module_name.clone(),
@@ -679,11 +701,17 @@ fn convert<B: 'static, O: 'static>(dd: DecodeDifferent<B, O>) -> Result<O, Conve
     }
 }
 
-fn convert_event(event: metadata::EventMetadata) -> Result<ModuleEventMetadata, ConversionError> {
+fn convert_event(
+    event: metadata::EventMetadata,
+    alias_resolver: &EventArgResolver,
+) -> Result<ModuleEventMetadata, ConversionError> {
     let name = convert(event.name)?;
     let mut arguments = Vec::new();
     for arg in convert(event.arguments)? {
-        let arg = arg.parse::<EventArg>()?;
+        log::debug!("event arg: {:?}", arg);
+        let arg = alias_resolver.get_alias(&arg).parse::<EventArg>()?;
+        // let arg = arg.parse::<EventArg>()?;
+        log::debug!("prased event arg: {:?}", arg);
         arguments.push(arg);
     }
     Ok(ModuleEventMetadata { name, arguments })
