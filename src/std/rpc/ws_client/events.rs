@@ -112,9 +112,12 @@ impl TryFrom<Metadata> for EventsDecoder {
         decoder.register_type_size::<Moment>("T::Moment")?;
         decoder.register_type_size::<Hash>("Hash")?;
         decoder.register_type_size::<Balance>("Balance")?;
+        decoder.register_type_size::<Balance>("T::Balance")?;
         decoder.register_type_size::<Balance>("AmountOfToken<T>")?;
         decoder.register_type_size::<Balance>("AmountOfCoin<T>")?;
         decoder.register_type_size::<u32>("T::VoteIndex")?;
+        decoder.register_type_size::<u32>("T::TokenId")?;
+        decoder.register_type_size::<u32>("TokenId<T>")?;
         // decoder.register_type_size::<Vec<(sp_core::ed25519::Public, u64)>>("AuthorityList")?;
         // VoteThreshold enum index
         decoder.register_type_size::<u8>("VoteThreshold")?;
