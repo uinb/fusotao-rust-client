@@ -14,14 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{
-    collections::{HashMap, HashSet},
-    convert::TryFrom,
-    marker::Send,
-};
-
 use codec::{Codec, Compact, Decode, Encode, Error as CodecError, Input, Output};
 use sp_runtime::DispatchError;
+use std::{collections::HashMap, convert::TryFrom, marker::Send};
 use support::weights::DispatchInfo;
 use system::Phase;
 
@@ -118,10 +113,10 @@ impl TryFrom<Metadata> for EventsDecoder {
         decoder.register_type_size::<u32>("T::VoteIndex")?;
         decoder.register_type_size::<u32>("T::TokenId")?;
         decoder.register_type_size::<u32>("TokenId<T>")?;
-        // decoder.register_type_size::<Vec<(sp_core::ed25519::Public, u64)>>("AuthorityList")?;
-        // VoteThreshold enum index
+        decoder.register_type_size::<u32>("Status")?;
         decoder.register_type_size::<u8>("VoteThreshold")?;
-
+        // TODO
+        decoder.register_type_size::<u8>("Status")?;
         Ok(decoder)
     }
 }
@@ -137,36 +132,6 @@ impl EventsDecoder {
             Ok(size)
         } else {
             Err(EventsError::TypeSizeUnavailable(name.to_owned()))
-        }
-    }
-
-    pub fn check_missing_type_sizes(&self) {
-        let mut missing = HashSet::new();
-        for module in self.metadata.modules_with_events() {
-            for event in module.events() {
-                for arg in event.arguments() {
-                    for primitive in arg.primitives() {
-                        if module.name() != "System"
-                            && !self.type_sizes.contains_key(&primitive)
-                            && !primitive.contains("PhantomData")
-                        {
-                            missing.insert(format!(
-                                "{}::{}::{}",
-                                module.name(),
-                                event.name,
-                                primitive
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-        if !missing.is_empty() {
-            log::warn!(
-                "The following primitive types do not have registered sizes: {:?} \
-                If any of these events are received, an error will occur since we cannot decode them",
-                missing
-            );
         }
     }
 
@@ -186,20 +151,15 @@ impl EventsDecoder {
                     }
                 }
                 EventArg::Tuple(args) => self.decode_raw_bytes(args, input, output)?,
-                EventArg::Primitive(name) => {
+                EventArg::Primitive(name, size) => {
                     if name.contains("PhantomData") {
                         // PhantomData is size 0
                         return Ok(());
                     }
-                    if let Some(size) = self.type_sizes.get(name) {
-                        let mut buf = vec![0; *size];
-                        log::debug!("type_name={:?}, size={:?}", name, size);
-                        input.read(&mut buf)?;
-                        output.write(&buf);
-                    } else {
-                        // TODO
-                        return Err(EventsError::TypeSizeUnavailable(name.to_owned()));
-                    }
+                    let mut buf = vec![0; *size];
+                    log::debug!("type_name={:?}, size={:?}", name, size);
+                    input.read(&mut buf)?;
+                    output.write(&buf);
                 }
             }
         }

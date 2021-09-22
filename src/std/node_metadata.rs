@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{collections::HashMap, convert::TryFrom, marker::PhantomData, str::FromStr};
+use codec::{Codec, Decode, Encode};
+use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 
-use codec::{Decode, Encode};
-
+use crate::std::AccountId;
+use crate::{Balance, BlockNumber, Hash, Moment};
 use log::*;
 use metadata::{
     DecodeDifferent, RuntimeMetadata, RuntimeMetadataPrefixed, StorageEntryModifier,
@@ -513,38 +514,92 @@ impl ModuleEventMetadata {
 /// so the raw bytes can be extracted from the encoded `Vec<EventRecord<E>>` (without `E` defined).
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum EventArg {
-    Primitive(String),
+    Primitive(String, usize),
     Vec(Box<EventArg>),
     Tuple(Vec<EventArg>),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EventArgAlias {
+    Primitive(usize),
+    Alias(String),
+}
+
 // FIXME just a quick naive fix
-struct EventArgResolver(HashMap<String, String>);
+struct EventArgResolver(HashMap<String, EventArgAlias>);
 
 impl EventArgResolver {
     fn new() -> Self {
         EventArgResolver(HashMap::new())
     }
 
-    fn set_type_alias(&mut self, alias: &str, real: &str) {
-        self.0.insert(alias.to_string(), real.to_string());
+    fn set_type(&mut self, alias: &str, size: EventArgAlias) {
+        self.0.insert(alias.to_string(), size);
     }
 
-    fn get_alias(&self, n: &str) -> String {
-        self.0
+    fn get_size(&self, n: &str) -> Result<usize, ConversionError> {
+        let entry = self
+            .0
             .get(n)
-            .map(|v| v.to_string())
-            .unwrap_or(n.to_string())
+            .ok_or(ConversionError::UnknownEventArgSize(n.to_string()))?;
+        match entry {
+            EventArgAlias::Primitive(size) => Ok(*size),
+            EventArgAlias::Alias(alias) => self.get_size(&alias),
+        }
+    }
+
+    pub fn set_wellknown_type<U>(&mut self, name: &str)
+    where
+        U: Default + Codec + Send + 'static,
+    {
+        let size = U::default().encode().len();
+        self.set_type(name, EventArgAlias::Primitive(size));
+    }
+
+    pub fn register(&mut self) {
+        self.set_wellknown_type::<bool>("bool");
+        self.set_wellknown_type::<u32>("ReferendumIndex");
+        self.set_wellknown_type::<[u8; 16]>("Kind");
+        self.set_wellknown_type::<[u8; 32]>("AuthorityId");
+        self.set_wellknown_type::<u8>("u8");
+        self.set_wellknown_type::<u32>("u32");
+        self.set_wellknown_type::<u64>("u64");
+        self.set_wellknown_type::<u32>("AccountIndex");
+        self.set_wellknown_type::<u32>("SessionIndex");
+        self.set_wellknown_type::<u32>("PropIndex");
+        self.set_wellknown_type::<u32>("ProposalIndex");
+        self.set_wellknown_type::<u32>("AuthorityIndex");
+        self.set_wellknown_type::<u64>("AuthorityWeight");
+        self.set_wellknown_type::<u32>("MemberCount");
+        self.set_wellknown_type::<AccountId>("AccountId");
+        self.set_wellknown_type::<AccountId>("T::AccountId");
+        self.set_wellknown_type::<BlockNumber>("BlockNumber");
+        self.set_wellknown_type::<BlockNumber>("T::BlockNumber");
+        self.set_wellknown_type::<Moment>("Moment");
+        self.set_wellknown_type::<Moment>("T::Moment");
+        self.set_wellknown_type::<Hash>("Hash");
+        self.set_wellknown_type::<Balance>("Balance");
+        self.set_wellknown_type::<Balance>("T::Balance");
+        self.set_wellknown_type::<Balance>("AmountOfToken<T>");
+        self.set_wellknown_type::<Balance>("AmountOfCoin<T>");
+        self.set_wellknown_type::<u32>("T::VoteIndex");
+        self.set_wellknown_type::<u32>("T::TokenId");
+        self.set_wellknown_type::<u32>("TokenId<T>");
+        self.set_wellknown_type::<u8>("VoteThreshold");
+        self.set_wellknown_type::<u8>("Status");
     }
 }
 
-impl FromStr for EventArg {
-    type Err = ConversionError;
+impl TryFrom<(&str, &EventArgResolver)> for EventArg {
+    type Error = ConversionError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn try_from((s, resolver): (&str, &EventArgResolver)) -> Result<Self, Self::Error> {
         if s.starts_with("Vec<") {
             if s.ends_with('>') {
-                Ok(EventArg::Vec(Box::new(s[4..s.len() - 1].parse()?)))
+                Ok(EventArg::Vec(Box::new(Self::try_from((
+                    &s[4..s.len() - 1],
+                    resolver,
+                ))?)))
             } else {
                 Err(ConversionError::InvalidEventArg(
                     s.to_string(),
@@ -555,8 +610,8 @@ impl FromStr for EventArg {
             if s.ends_with(')') {
                 let mut args = Vec::new();
                 for arg in s[1..s.len() - 1].split(',') {
-                    let arg = arg.trim().parse()?;
-                    args.push(arg)
+                    let arg = Self::try_from((arg.trim(), resolver))?;
+                    args.push(arg);
                 }
                 Ok(EventArg::Tuple(args))
             } else {
@@ -566,24 +621,7 @@ impl FromStr for EventArg {
                 ))
             }
         } else {
-            Ok(EventArg::Primitive(s.to_string()))
-        }
-    }
-}
-
-impl EventArg {
-    /// Returns all primitive types for this EventArg
-    pub fn primitives(&self) -> Vec<String> {
-        match self {
-            EventArg::Primitive(p) => vec![p.clone()],
-            EventArg::Vec(arg) => arg.primitives(),
-            EventArg::Tuple(args) => {
-                let mut primitives = Vec::new();
-                for arg in args {
-                    primitives.extend(arg.primitives())
-                }
-                primitives
-            }
+            Ok(EventArg::Primitive(s.to_string(), resolver.get_size(s)?))
         }
     }
 }
@@ -598,6 +636,8 @@ pub enum ConversionError {
     ExpectedDecoded,
     #[error("Invalid event arg {0}")]
     InvalidEventArg(String, &'static str),
+    #[error("Unknown event arg size: {0}")]
+    UnknownEventArgSize(String),
 }
 
 impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
@@ -615,9 +655,12 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         let mut modules_with_calls = HashMap::new();
         let mut modules_with_events = HashMap::new();
         let mut modules_with_errors = HashMap::new();
-        // TODO
         let mut alias_resolver = EventArgResolver::new();
-        alias_resolver.set_type_alias("AuthorityList", "Vec<(AuthorityId, u64)>");
+        alias_resolver.register();
+        alias_resolver.set_type(
+            "AuthorityList",
+            EventArgAlias::Alias("Vec<(AuthorityId, u64)>".to_string()),
+        );
         for module in convert(meta.modules)?.into_iter() {
             let module_name = convert(module.name.clone())?;
 
@@ -703,18 +746,20 @@ fn convert<B: 'static, O: 'static>(dd: DecodeDifferent<B, O>) -> Result<O, Conve
 
 fn convert_event(
     event: metadata::EventMetadata,
-    alias_resolver: &EventArgResolver,
+    resolver: &EventArgResolver,
 ) -> Result<ModuleEventMetadata, ConversionError> {
-    let name = convert(event.name)?;
+    let event_name = convert(event.name)?;
     let mut arguments = Vec::new();
-    for arg in convert(event.arguments)? {
-        log::debug!("event arg: {:?}", arg);
-        let arg = alias_resolver.get_alias(&arg).parse::<EventArg>()?;
-        // let arg = arg.parse::<EventArg>()?;
+    for arg_name in convert(event.arguments)? {
+        log::debug!("event arg: {:?}", arg_name);
+        let arg = EventArg::try_from((arg_name.as_ref(), resolver))?;
         log::debug!("prased event arg: {:?}", arg);
         arguments.push(arg);
     }
-    Ok(ModuleEventMetadata { name, arguments })
+    Ok(ModuleEventMetadata {
+        name: event_name,
+        arguments,
+    })
 }
 
 fn convert_entry(
