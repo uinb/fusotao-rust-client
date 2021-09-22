@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use codec::{Codec, Compact, Decode, Encode, Error as CodecError, Input, Output};
+use codec::{Compact, Decode, Encode, Error as CodecError, Input, Output};
 use sp_runtime::DispatchError;
-use std::{collections::HashMap, convert::TryFrom, marker::Send};
+use std::collections::HashMap;
 use support::weights::DispatchInfo;
 use system::Phase;
 
 use crate::std::node_metadata::{EventArg, Metadata, MetadataError};
 use crate::std::AccountId;
-use crate::{Balance, BlockNumber, Hash, Moment};
+use crate::Hash;
 
 /// Event for the System module.
 #[derive(Clone, Debug, Decode)]
@@ -74,67 +74,17 @@ pub struct EventsDecoder {
     // marker: PhantomData<fn() -> T>,
 }
 
-impl TryFrom<Metadata> for EventsDecoder {
-    type Error = EventsError;
-
-    // TODO add schema
-    fn try_from(metadata: Metadata) -> Result<Self, Self::Error> {
-        let mut decoder = Self {
+impl From<Metadata> for EventsDecoder {
+    fn from(metadata: Metadata) -> Self {
+        Self {
             metadata,
             type_sizes: HashMap::new(),
             // marker: PhantomData,
-        };
-        // register default event arg type sizes for dynamic decoding of events
-        decoder.register_type_size::<bool>("bool")?;
-        decoder.register_type_size::<u32>("ReferendumIndex")?;
-        decoder.register_type_size::<[u8; 16]>("Kind")?;
-        decoder.register_type_size::<[u8; 32]>("AuthorityId")?;
-        decoder.register_type_size::<u8>("u8")?;
-        decoder.register_type_size::<u32>("u32")?;
-        decoder.register_type_size::<u64>("u64")?;
-        decoder.register_type_size::<u32>("AccountIndex")?;
-        decoder.register_type_size::<u32>("SessionIndex")?;
-        decoder.register_type_size::<u32>("PropIndex")?;
-        decoder.register_type_size::<u32>("ProposalIndex")?;
-        decoder.register_type_size::<u32>("AuthorityIndex")?;
-        decoder.register_type_size::<u64>("AuthorityWeight")?;
-        decoder.register_type_size::<u32>("MemberCount")?;
-        decoder.register_type_size::<AccountId>("AccountId")?;
-        decoder.register_type_size::<AccountId>("T::AccountId")?;
-        decoder.register_type_size::<BlockNumber>("BlockNumber")?;
-        decoder.register_type_size::<BlockNumber>("T::BlockNumber")?;
-        decoder.register_type_size::<Moment>("Moment")?;
-        decoder.register_type_size::<Moment>("T::Moment")?;
-        decoder.register_type_size::<Hash>("Hash")?;
-        decoder.register_type_size::<Balance>("Balance")?;
-        decoder.register_type_size::<Balance>("T::Balance")?;
-        decoder.register_type_size::<Balance>("AmountOfToken<T>")?;
-        decoder.register_type_size::<Balance>("AmountOfCoin<T>")?;
-        decoder.register_type_size::<u32>("T::VoteIndex")?;
-        decoder.register_type_size::<u32>("T::TokenId")?;
-        decoder.register_type_size::<u32>("TokenId<T>")?;
-        decoder.register_type_size::<u32>("Status")?;
-        decoder.register_type_size::<u8>("VoteThreshold")?;
-        // TODO
-        decoder.register_type_size::<u8>("Status")?;
-        Ok(decoder)
+        }
     }
 }
 
 impl EventsDecoder {
-    pub fn register_type_size<U>(&mut self, name: &str) -> Result<usize, EventsError>
-    where
-        U: Default + Codec + Send + 'static,
-    {
-        let size = U::default().encode().len();
-        if size > 0 {
-            self.type_sizes.insert(name.to_string(), size);
-            Ok(size)
-        } else {
-            Err(EventsError::TypeSizeUnavailable(name.to_owned()))
-        }
-    }
-
     fn decode_raw_bytes<I: Input, W: Output>(
         &self,
         args: &[EventArg],
@@ -160,6 +110,13 @@ impl EventsDecoder {
                     log::debug!("type_name={:?}, size={:?}", name, size);
                     input.read(&mut buf)?;
                     output.write(&buf);
+                }
+                EventArg::Enum(args) => {
+                    input.read_byte()?;
+                    self.decode_raw_bytes(args, input, output)?;
+                }
+                EventArg::Ignore(arg) | EventArg::Alias(arg) => {
+                    return Err(EventsError::TypeSizeUnavailable(arg.clone()))
                 }
             }
         }
@@ -215,25 +172,22 @@ impl EventsDecoder {
                 log::debug!("{:?}", event_metadata);
                 let mut event_data = Vec::<u8>::new();
                 self.decode_raw_bytes(&event_metadata.arguments(), input, &mut event_data)?;
-
                 log::debug!(
                     "received event '{}::{}', raw bytes: {}",
                     module.name(),
                     event_metadata.name,
                     hex::encode(&event_data),
                 );
-
                 RuntimeEvent::Raw(RawEvent {
                     module: module.name().to_string(),
                     variant: event_metadata.name.clone(),
                     data: event_data,
                 })
             };
-
             // topics come after the event data in EventRecord
             log::debug!("Phase {:?}, Event: {:?}", phase, event);
             log::debug!("Decoding topics {:?}", input);
-            let topics = Vec::<crate::Hash>::decode(input)?;
+            let topics = Vec::<Hash>::decode(input)?;
             log::debug!("Topics: {:?}", topics);
             r.push((phase, event));
         }

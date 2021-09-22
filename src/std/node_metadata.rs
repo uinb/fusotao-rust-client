@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::{std::AccountId, Balance, BlockNumber, Hash, Moment};
 use codec::{Codec, Decode, Encode};
-use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
-
-use crate::std::AccountId;
-use crate::{Balance, BlockNumber, Hash, Moment};
-use log::*;
 use metadata::{
     DecodeDifferent, RuntimeMetadata, RuntimeMetadataPrefixed, StorageEntryModifier,
     StorageEntryType, StorageHasher, META_RESERVED,
 };
 use serde::ser::Serialize;
 use sp_core::storage::StorageKey;
+use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
+use support::weights::DispatchInfo;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MetadataError {
@@ -367,9 +365,12 @@ impl StorageMetadata {
                 let default = Decode::decode(&mut &self.default[..])
                     .map_err(|_| MetadataError::MapValueTypeError)?;
 
-                info!(
+                log::info!(
                     "map for '{}' '{}' has hasher1 {:?} hasher2 {:?}",
-                    self.module_prefix, self.storage_prefix, hasher1, hasher2
+                    self.module_prefix,
+                    self.storage_prefix,
+                    hasher1,
+                    hasher2
                 );
                 Ok(StorageDoubleMap {
                     _marker: PhantomData,
@@ -393,9 +394,11 @@ impl StorageMetadata {
                 let default = Decode::decode(&mut &self.default[..])
                     .map_err(|_| MetadataError::MapValueTypeError)?;
 
-                info!(
+                log::info!(
                     "map for '{}' '{}' has hasher {:?}",
-                    self.module_prefix, self.storage_prefix, hasher
+                    self.module_prefix,
+                    self.storage_prefix,
+                    hasher
                 );
                 Ok(StorageMap {
                     _marker: PhantomData,
@@ -517,35 +520,39 @@ pub enum EventArg {
     Primitive(String, usize),
     Vec(Box<EventArg>),
     Tuple(Vec<EventArg>),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum EventArgAlias {
-    Primitive(usize),
+    Enum(Vec<EventArg>),
     Alias(String),
+    Ignore(String),
 }
 
-// FIXME just a quick naive fix
-struct EventArgResolver(HashMap<String, EventArgAlias>);
+/// just a naive fix
+struct EventArgResolver(HashMap<String, EventArg>);
 
 impl EventArgResolver {
     fn new() -> Self {
         EventArgResolver(HashMap::new())
     }
 
-    fn set_type(&mut self, alias: &str, size: EventArgAlias) {
-        self.0.insert(alias.to_string(), size);
+    pub fn get_arg(&self, n: &str) -> Result<EventArg, ConversionError> {
+        self.0
+            .get(n)
+            .map(|a| a.clone())
+            .ok_or(ConversionError::UnknownEventArgSize(n.to_owned()))
     }
 
-    fn get_size(&self, n: &str) -> Result<usize, ConversionError> {
-        let entry = self
-            .0
-            .get(n)
-            .ok_or(ConversionError::UnknownEventArgSize(n.to_string()))?;
-        match entry {
-            EventArgAlias::Primitive(size) => Ok(*size),
-            EventArgAlias::Alias(alias) => self.get_size(&alias),
-        }
+    pub fn set_type_ignore(&mut self, name: &str) {
+        self.0
+            .insert(name.to_owned(), EventArg::Ignore(name.to_owned()));
+    }
+
+    pub fn set_type_alias(&mut self, name: &str, alias: &str) {
+        self.0
+            .insert(name.to_owned(), EventArg::Alias(alias.to_owned()));
+    }
+
+    pub fn set_type_size(&mut self, name: &str, size: usize) {
+        self.0
+            .insert(name.to_owned(), EventArg::Primitive(name.to_owned(), size));
     }
 
     pub fn set_wellknown_type<U>(&mut self, name: &str)
@@ -553,7 +560,7 @@ impl EventArgResolver {
         U: Default + Codec + Send + 'static,
     {
         let size = U::default().encode().len();
-        self.set_type(name, EventArgAlias::Primitive(size));
+        self.set_type_size(name, size);
     }
 
     pub fn register(&mut self) {
@@ -561,9 +568,14 @@ impl EventArgResolver {
         self.set_wellknown_type::<u32>("ReferendumIndex");
         self.set_wellknown_type::<[u8; 16]>("Kind");
         self.set_wellknown_type::<[u8; 32]>("AuthorityId");
+        self.set_type_alias("AuthorityList", "Vec<(AuthorityId, u64)>");
         self.set_wellknown_type::<u8>("u8");
         self.set_wellknown_type::<u32>("u32");
         self.set_wellknown_type::<u64>("u64");
+        self.set_wellknown_type::<DispatchInfo>("DispatchInfo");
+        // self.set_type_alias("DispatchError", "Enum[Other,CannotLookup,BadOrigin,Module,ConsumerRemaining,NoProviders,Token,Arithmetic]");
+        self.set_type_ignore("DispatchError");
+        self.set_type_ignore("DispatchResult");
         self.set_wellknown_type::<u32>("AccountIndex");
         self.set_wellknown_type::<u32>("SessionIndex");
         self.set_wellknown_type::<u32>("PropIndex");
@@ -573,12 +585,15 @@ impl EventArgResolver {
         self.set_wellknown_type::<u32>("MemberCount");
         self.set_wellknown_type::<AccountId>("AccountId");
         self.set_wellknown_type::<AccountId>("T::AccountId");
+        self.set_wellknown_type::<AccountId>("ConfigAccountId<T>");
         self.set_wellknown_type::<BlockNumber>("BlockNumber");
         self.set_wellknown_type::<BlockNumber>("T::BlockNumber");
+        self.set_wellknown_type::<BlockNumber>("ConfigBlockNumber<T>");
         self.set_wellknown_type::<Moment>("Moment");
         self.set_wellknown_type::<Moment>("T::Moment");
         self.set_wellknown_type::<Hash>("Hash");
         self.set_wellknown_type::<Balance>("Balance");
+        self.set_wellknown_type::<Balance>("BalanceOf<T>");
         self.set_wellknown_type::<Balance>("T::Balance");
         self.set_wellknown_type::<Balance>("AmountOfToken<T>");
         self.set_wellknown_type::<Balance>("AmountOfCoin<T>");
@@ -620,8 +635,22 @@ impl TryFrom<(&str, &EventArgResolver)> for EventArg {
                     "Expecting closing `)` for tuple",
                 ))
             }
+        } else if s.starts_with("Enum[") {
+            if s.ends_with(']') {
+                let mut args = Vec::new();
+                for arg in s[1..s.len() - 1].split(',') {
+                    let arg = Self::try_from((arg.trim(), resolver))?;
+                    args.push(arg);
+                }
+                Ok(EventArg::Enum(args))
+            } else {
+                Err(ConversionError::InvalidEventArg(
+                    s.to_string(),
+                    "Expecting closing `]` for enum",
+                ))
+            }
         } else {
-            Ok(EventArg::Primitive(s.to_string(), resolver.get_size(s)?))
+            resolver.get_arg(s)
         }
     }
 }
@@ -657,10 +686,6 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         let mut modules_with_errors = HashMap::new();
         let mut alias_resolver = EventArgResolver::new();
         alias_resolver.register();
-        alias_resolver.set_type(
-            "AuthorityList",
-            EventArgAlias::Alias("Vec<(AuthorityId, u64)>".to_string()),
-        );
         for module in convert(meta.modules)?.into_iter() {
             let module_name = convert(module.name.clone())?;
 
@@ -699,9 +724,11 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
                     },
                 );
             }
+
             if let Some(events) = module.event {
                 let mut event_map = HashMap::new();
                 for (index, event) in convert(events)?.into_iter().enumerate() {
+                    log::debug!("resolve event {:?} of {:?}", event.name, module_name);
                     event_map.insert(index as u8, convert_event(event, &alias_resolver)?);
                 }
                 modules_with_events.insert(
@@ -753,7 +780,6 @@ fn convert_event(
     for arg_name in convert(event.arguments)? {
         log::debug!("event arg: {:?}", arg_name);
         let arg = EventArg::try_from((arg_name.as_ref(), resolver))?;
-        log::debug!("prased event arg: {:?}", arg);
         arguments.push(arg);
     }
     Ok(ModuleEventMetadata {

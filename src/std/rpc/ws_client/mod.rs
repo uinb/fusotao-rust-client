@@ -14,19 +14,16 @@
    limitations under the License.
 
 */
-use std::convert::TryFrom;
-use std::sync::mpsc::{Receiver, SendError, Sender as ThreadOut};
-
-use codec::Decode;
-use log::{debug, error, info, warn};
-use sp_core::Pair;
-use sp_runtime::MultiSignature;
-use ws::{CloseCode, Error, Handler, Handshake, Message, Result as WsResult, Sender};
-
 use crate::std::rpc::RpcClientError;
 use crate::std::{json_req, FromHexString, RpcClient as RpcClientTrait, XtStatus};
 use crate::std::{Api, ApiResult};
 use crate::{utils, ApiClientError};
+use codec::Decode;
+use log::{debug, error, info, warn};
+use sp_core::Pair;
+use sp_runtime::MultiSignature;
+use std::sync::mpsc::{Receiver, SendError, Sender as ThreadOut};
+use ws::{CloseCode, Error, Handler, Handshake, Message, Result as WsResult, Sender};
 
 pub use client::WsRpcClient;
 pub use events::EventsError;
@@ -113,7 +110,7 @@ where
     ) -> ApiResult<RawEvent> {
         let event_decoder = match decoder {
             Some(d) => d,
-            None => EventsDecoder::try_from(self.metadata.clone())?,
+            None => EventsDecoder::from(self.metadata.clone()),
         };
 
         loop {
