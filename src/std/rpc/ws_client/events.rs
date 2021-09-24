@@ -16,7 +16,6 @@
 
 use codec::{Compact, Decode, Encode, Error as CodecError, Input, Output};
 use sp_runtime::DispatchError;
-use std::collections::HashMap;
 use support::weights::DispatchInfo;
 use system::Phase;
 
@@ -70,7 +69,6 @@ pub enum EventsError {
 #[derive(Clone)]
 pub struct EventsDecoder {
     metadata: Metadata,
-    type_sizes: HashMap<String, usize>,
     // marker: PhantomData<fn() -> T>,
 }
 
@@ -78,7 +76,6 @@ impl From<Metadata> for EventsDecoder {
     fn from(metadata: Metadata) -> Self {
         Self {
             metadata,
-            type_sizes: HashMap::new(),
             // marker: PhantomData,
         }
     }
@@ -116,7 +113,7 @@ impl EventsDecoder {
                     self.decode_raw_bytes(args, input, output)?;
                 }
                 EventArg::Ignore(arg) | EventArg::Alias(arg) => {
-                    return Err(EventsError::TypeSizeUnavailable(arg.clone()))
+                    return Err(EventsError::TypeSizeUnavailable(arg.clone()));
                 }
             }
         }

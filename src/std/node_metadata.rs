@@ -55,6 +55,7 @@ pub struct Metadata {
     modules_with_calls: HashMap<String, ModuleWithCalls>,
     modules_with_events: HashMap<String, ModuleWithEvents>,
     modules_with_errors: HashMap<String, ModuleWithErrors>,
+    pub event_arg_resolver: EventArgResolver,
 }
 
 impl Metadata {
@@ -526,7 +527,8 @@ pub enum EventArg {
 }
 
 /// just a naive fix
-struct EventArgResolver(HashMap<String, EventArg>);
+#[derive(Clone, Debug)]
+pub struct EventArgResolver(HashMap<String, EventArg>);
 
 impl EventArgResolver {
     fn new() -> Self {
@@ -650,7 +652,11 @@ impl TryFrom<(&str, &EventArgResolver)> for EventArg {
                 ))
             }
         } else {
-            resolver.get_arg(s)
+            let arg = resolver.get_arg(s)?;
+            match arg {
+                EventArg::Alias(alias) => Ok(Self::try_from((alias.as_ref(), resolver))?),
+                _ => Ok(arg),
+            }
         }
     }
 }
@@ -684,8 +690,8 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         let mut modules_with_calls = HashMap::new();
         let mut modules_with_events = HashMap::new();
         let mut modules_with_errors = HashMap::new();
-        let mut alias_resolver = EventArgResolver::new();
-        alias_resolver.register();
+        let mut event_arg_resolver = EventArgResolver::new();
+        event_arg_resolver.register();
         for module in convert(meta.modules)?.into_iter() {
             let module_name = convert(module.name.clone())?;
 
@@ -729,7 +735,7 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
                 let mut event_map = HashMap::new();
                 for (index, event) in convert(events)?.into_iter().enumerate() {
                     log::debug!("resolve event {:?} of {:?}", event.name, module_name);
-                    event_map.insert(index as u8, convert_event(event, &alias_resolver)?);
+                    event_map.insert(index as u8, convert_event(event, &event_arg_resolver)?);
                 }
                 modules_with_events.insert(
                     module_name.clone(),
@@ -760,6 +766,7 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
             modules_with_calls,
             modules_with_events,
             modules_with_errors,
+            event_arg_resolver,
         })
     }
 }
