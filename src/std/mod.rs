@@ -190,6 +190,14 @@ where
         }
     }
 
+    pub fn get_block_hash(&self, block_number: crate::BlockNumber) -> ApiResult<Option<Hash>> {
+        let h = self.get_request(json_req::chain_get_block_hash(Some(block_number)))?;
+        match h {
+            Some(hash) => Ok(Some(serde_json::from_str(&hash)?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn get_block<B>(&self, hash: Option<Hash>) -> ApiResult<Option<B>>
     where
         B: Block + DeserializeOwned,
