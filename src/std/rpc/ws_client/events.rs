@@ -99,8 +99,7 @@ impl EventsDecoder {
                 }
                 EventArg::Tuple(args) => self.decode_raw_bytes(args, input, output)?,
                 EventArg::Primitive(name, size) => {
-                    if name.contains("PhantomData") {
-                        // PhantomData is size 0
+                    if name.contains("PhantomData") || *size == 0usize {
                         return Ok(());
                     }
                     let mut buf = vec![0; *size];
@@ -109,8 +108,8 @@ impl EventsDecoder {
                     output.write(&buf);
                 }
                 EventArg::Enum(args) => {
-                    input.read_byte()?;
-                    self.decode_raw_bytes(args, input, output)?;
+                    let var = input.read_byte()?;
+                    self.decode_raw_bytes(&[args[var as usize].clone()], input, output)?;
                 }
                 EventArg::Ignore(arg) | EventArg::Alias(arg) => {
                     return Err(EventsError::TypeSizeUnavailable(arg.clone()));
@@ -127,10 +126,8 @@ impl EventsDecoder {
         log::debug!("Decoding compact len: {:?}", input);
         let compact_len = <Compact<u32>>::decode(input)?;
         let len = compact_len.0 as usize;
-        log::debug!("events count?? => {:?}", len);
         let mut r = Vec::new();
         for _ in 0..len {
-            // decode EventRecord
             log::debug!("Decoding phase: {:?}", input);
             let phase = Phase::decode(input)?;
             let module_variant = input.read_byte()?;
@@ -183,7 +180,6 @@ impl EventsDecoder {
             };
             // topics come after the event data in EventRecord
             log::debug!("Phase {:?}, Event: {:?}", phase, event);
-            log::debug!("Decoding topics {:?}", input);
             let topics = Vec::<Hash>::decode(input)?;
             log::debug!("Topics: {:?}", topics);
             r.push((phase, event));

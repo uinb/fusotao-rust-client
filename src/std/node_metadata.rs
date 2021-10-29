@@ -22,7 +22,11 @@ use metadata::{
 };
 use serde::ser::Serialize;
 use sp_core::storage::StorageKey;
-use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+    marker::PhantomData,
+};
 use support::weights::DispatchInfo;
 
 #[derive(Debug, thiserror::Error)]
@@ -528,32 +532,38 @@ pub enum EventArg {
 
 /// just a naive fix
 #[derive(Clone, Debug)]
-pub struct EventArgResolver(HashMap<String, EventArg>);
+pub struct EventArgResolver {
+    args: HashMap<String, EventArg>,
+    unknown_args: HashSet<String>,
+}
 
 impl EventArgResolver {
     fn new() -> Self {
-        EventArgResolver(HashMap::new())
+        Self {
+            args: HashMap::new(),
+            unknown_args: HashSet::new(),
+        }
     }
 
     pub fn get_arg(&self, n: &str) -> Result<EventArg, ConversionError> {
-        self.0
+        self.args
             .get(n)
             .map(|a| a.clone())
             .ok_or(ConversionError::UnknownEventArgSize(n.to_owned()))
     }
 
     pub fn set_type_ignore(&mut self, name: &str) {
-        self.0
+        self.args
             .insert(name.to_owned(), EventArg::Ignore(name.to_owned()));
     }
 
     pub fn set_type_alias(&mut self, name: &str, alias: &str) {
-        self.0
+        self.args
             .insert(name.to_owned(), EventArg::Alias(alias.to_owned()));
     }
 
     pub fn set_type_size(&mut self, name: &str, size: usize) {
-        self.0
+        self.args
             .insert(name.to_owned(), EventArg::Primitive(name.to_owned(), size));
     }
 
@@ -561,6 +571,7 @@ impl EventArgResolver {
     where
         U: Default + Codec + Send + 'static,
     {
+        // not good
         let size = U::default().encode().len();
         self.set_type_size(name, size);
     }
@@ -574,10 +585,14 @@ impl EventArgResolver {
         self.set_wellknown_type::<u8>("u8");
         self.set_wellknown_type::<u32>("u32");
         self.set_wellknown_type::<u64>("u64");
+        self.set_type_size("PhantomData", 0);
         self.set_wellknown_type::<DispatchInfo>("DispatchInfo");
-        // self.set_type_alias("DispatchError", "Enum[Other,CannotLookup,BadOrigin,Module,ConsumerRemaining,NoProviders,Token,Arithmetic]");
-        self.set_type_ignore("DispatchError");
-        self.set_type_ignore("DispatchResult");
+        self.set_type_alias(
+            "DispatchError",
+            "Enum[PhantomData,PhantomData,PhantomData,DispatchError::Module,PhantomData,PhantomData]",
+        );
+        self.set_wellknown_type::<[u8; 2]>("DispatchError::Module");
+        self.set_type_alias("DispatchResult", "Enum[PhantomData,DispatchError]");
         self.set_wellknown_type::<u32>("AccountIndex");
         self.set_wellknown_type::<u32>("SessionIndex");
         self.set_wellknown_type::<u32>("PropIndex");
@@ -640,7 +655,7 @@ impl TryFrom<(&str, &EventArgResolver)> for EventArg {
         } else if s.starts_with("Enum[") {
             if s.ends_with(']') {
                 let mut args = Vec::new();
-                for arg in s[1..s.len() - 1].split(',') {
+                for arg in s[5..s.len() - 1].split(',') {
                     let arg = Self::try_from((arg.trim(), resolver))?;
                     args.push(arg);
                 }
