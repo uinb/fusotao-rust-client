@@ -30,7 +30,7 @@ pub use crate::std::*;
 
 pub use ac_primitives::{
     AccountData, AccountDataGen, AccountInfo, AccountInfoGen, Balance, BlockNumber, GenericAddress,
-    GenericExtra, Hash, Index, Moment, RawExtrinsic, RefCount, UncheckedExtrinsicV4,
+    GenericExtra, Hash, Index, Moment, RefCount, UncheckedExtrinsicV4,
 };
 
 #[cfg(feature = "std")]

@@ -7,7 +7,7 @@ pub use extrinsics::*;
 pub mod extrinsics;
 
 /// The block number type used in this runtime.
-pub type BlockNumber = u64;
+pub type BlockNumber = u32;
 /// The timestamp moment type used in this runtime.
 pub type Moment = u64;
 /// Index of a transaction.
