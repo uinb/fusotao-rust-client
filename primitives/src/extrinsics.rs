@@ -83,6 +83,74 @@ where
     }
 }
 
+pub type RawSignedPayload = SignedPayload<Vec<u8>>;
+
+impl RawSignedPayload {
+    pub fn sign<R, F: FnOnce(&[u8]) -> R>(&mut self, f: F) -> R {
+        self.0 .1.encode_to(&mut self.0 .0);
+        self.0 .2.encode_to(&mut self.0 .0);
+        if self.0 .0.len() > 256 {
+            f(&blake2_256(&self.0 .0[..])[..])
+        } else {
+            f(&self.0 .0[..])
+        }
+    }
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct RawExtrinsic {
+    pub signature: Option<(GenericAddress, MultiSignature, GenericExtra)>,
+    pub raw: Vec<u8>,
+}
+
+impl RawExtrinsic {
+    pub fn new_signed(
+        raw: Vec<u8>,
+        signed: GenericAddress,
+        signature: MultiSignature,
+        extra: GenericExtra,
+    ) -> Self {
+        Self {
+            signature: Some((signed, signature, extra)),
+            raw,
+        }
+    }
+
+    pub fn hex_encode(&self) -> alloc::string::String {
+        let mut hex_str = hex::encode(self.encode());
+        hex_str.insert_str(0, "0x");
+        hex_str
+    }
+}
+
+impl Encode for RawExtrinsic {
+    fn encode(&self) -> Vec<u8> {
+        encode_with_vec_prefix::<Self, _>(|v| {
+            match self.signature.as_ref() {
+                Some(s) => {
+                    v.push(V4 | 0b1000_0000);
+                    s.encode_to(v);
+                }
+                None => {
+                    v.push(V4 & 0b0111_1111);
+                }
+            }
+            v.extend_from_slice(&self.raw[..]);
+        })
+    }
+}
+
+impl fmt::Debug for RawExtrinsic {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "RawExtrinsic({:?}, {:?})",
+            self.signature.as_ref().map(|x| (&x.0, &x.2)),
+            self.raw
+        )
+    }
+}
+
 /// Mirrors the currently used Extrinsic format (V4) from substrate. Has less traits and methods though.
 /// The SingedExtra used does not need to implement SingedExtension here.
 #[derive(Clone, Eq, PartialEq)]

@@ -107,10 +107,10 @@ checksum = "8b26702f315f53b6071259e15dd9d64528213b44d61de1ec926eca7715d62203"
 name = "api-client-tutorial"
 version = "0.6.0"
 dependencies = [
+ "fusotao-rust-client",
  "parity-scale-codec",
- "sp-core 4.1.0-dev",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
- "substrate-api-client",
+ "sp-core 4.0.0-dev",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
 ]
 
 [[package]]
@@ -917,6 +917,39 @@ name = "funty"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
+
+[[package]]
+name = "fusotao-rust-client"
+version = "0.6.0"
+dependencies = [
+ "ac-compose-macros",
+ "ac-node-api",
+ "ac-primitives",
+ "clap",
+ "env_logger",
+ "frame-metadata 14.2.0 (git+https://github.com/paritytech/frame-metadata.git?branch=main)",
+ "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "hex",
+ "log",
+ "node-template-runtime",
+ "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "pallet-staking",
+ "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "parity-scale-codec",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "sp-application-crypto 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-core 4.0.0-dev",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
+ "sp-rpc",
+ "sp-runtime 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-std 4.0.0-dev",
+ "sp-version 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "thiserror",
+ "ws",
+]
 
 [[package]]
 name = "futures"
@@ -3714,39 +3747,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-api-client"
-version = "0.6.0"
-dependencies = [
- "ac-compose-macros",
- "ac-node-api",
- "ac-primitives",
- "clap",
- "env_logger",
- "frame-metadata 14.2.0 (git+https://github.com/paritytech/frame-metadata.git?branch=main)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "hex",
- "log",
- "node-template-runtime",
- "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "pallet-staking",
- "pallet-transaction-payment 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "parity-scale-codec",
- "primitive-types",
- "serde",
- "serde_json",
- "sp-application-crypto 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "sp-core 4.0.0-dev",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
- "sp-rpc",
- "sp-runtime 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "sp-std 4.0.0-dev",
- "sp-version 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
- "thiserror",
- "ws",
-]
-
-[[package]]
 name = "substrate-bip39"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3852,9 +3852,9 @@ dependencies = [
 name = "test-no-std"
 version = "0.6.0"
 dependencies = [
+ "fusotao-rust-client",
  "libc",
  "sp-io 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
- "substrate-api-client",
 ]
 
 [[package]]
