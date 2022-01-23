@@ -180,12 +180,12 @@ macro_rules! compose_extrinsic {
             use $crate::sp_runtime::generic::Era;
 
             debug!("Composing generic extrinsic for module {:?} and call {:?}", $module, $call);
-            let call = $crate::compose_call!($api.metadata.clone(), $module, $call $(, ($args)) *);
+            let call = $crate::compose_call!($api.metadata, $module, $call $(, ($args)) *);
 
             if let Some(signer) = $api.signer.clone() {
                 $crate::compose_extrinsic_offline!(
                     signer,
-                    call.clone(),
+                    call,
                     $api.get_nonce().unwrap(),
                     Era::Immortal,
                     $api.genesis_hash,
@@ -196,7 +196,7 @@ macro_rules! compose_extrinsic {
             } else {
                 UncheckedExtrinsicV4 {
                     signature: None,
-                    function: call.clone(),
+                    function: call,
                 }
             }
 		}
