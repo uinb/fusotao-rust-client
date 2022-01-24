@@ -307,7 +307,6 @@ where
         let storagekey = self
             .metadata
             .storage_value_key(storage_prefix, storage_key_name)?;
-        info!("storage key is: 0x{}", hex::encode(&storagekey));
         self.get_storage_by_key_hash(storagekey, at_block)
     }
 
@@ -359,6 +358,7 @@ where
         at_block: Option<Hash>,
     ) -> ApiResult<Option<V>> {
         let s = self.get_opaque_storage_by_key_hash(key, at_block)?;
+        log::info!("debug >>>>> {:?}", s);
         match s {
             Some(storage) => Ok(Some(Decode::decode(&mut storage.as_slice())?)),
             None => Ok(None),

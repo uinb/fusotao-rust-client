@@ -25,6 +25,8 @@ pub mod extrinsic;
 
 pub mod utils;
 
+pub use ac_node_api::events;
+
 #[cfg(feature = "std")]
 pub use crate::std::*;
 

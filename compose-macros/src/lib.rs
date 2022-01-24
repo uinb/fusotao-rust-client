@@ -84,6 +84,7 @@ macro_rules! compose_extrinsic_offline {
     $genesis_or_current_hash: expr,
     $runtime_spec_version: expr,
     $transaction_version: expr) => {{
+        use sp_core::Pair;
         use $crate::primitives::{
             GenericAddress, GenericExtra, SignedPayload, UncheckedExtrinsicV4,
         };
