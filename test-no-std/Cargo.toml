@@ -8,7 +8,7 @@ edition = "2021"
 libc = { version = "0.2", default-features = false }
 
 # local dependencies
-substrate-api-client = { path = "..", default-features = false }
+rust-client-api = { path = "..", default-features = false, package = "fusotao-rust-client" }
 
 # substrate dependencies
 sp-io = { version = "5.0.0", default-features = false, features = ["disable_oom", "disable_panic_handler"], git = "https://github.com/paritytech/substrate.git", branch = "master" }

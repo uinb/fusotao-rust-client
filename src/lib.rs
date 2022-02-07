@@ -25,6 +25,8 @@ pub mod extrinsic;
 
 pub mod utils;
 
+pub use ac_node_api::events;
+
 #[cfg(feature = "std")]
 pub use crate::std::*;
 
@@ -34,6 +36,6 @@ pub use ac_primitives::{
 };
 
 #[cfg(feature = "std")]
-pub use ac_compose_macros::compose_extrinsic;
+pub use ac_compose_macros::*;
 
-pub use ac_compose_macros::{compose_call, compose_extrinsic_offline};
+// pub use ac_compose_macros::*;

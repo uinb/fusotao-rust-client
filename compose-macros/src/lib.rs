@@ -48,6 +48,23 @@ macro_rules! compose_call {
     };
 }
 
+/// Generates the extrinsic's call in scale format
+/// # Arguments
+///
+/// * 'pallet_index' - This crate's parsed node metadata as field of the API.
+/// * 'call_index' - Module name as &str for which the call is composed.
+/// * 'args' - Optional sequence of arguments of the call. They are not checked against the metadata.
+/// As of now the user needs to check himself that the correct arguments are supplied.
+#[macro_export]
+macro_rules! compose_raw_call {
+    ($pallet_index: expr, $call_index: expr $(, $args: expr) *) => {
+        {
+            use sp_core::Encode;
+            ([$pallet_index, $call_index as u8] $(, ($args)) *).encode()
+        }
+    };
+}
+
 /// Generates an Unchecked extrinsic for a given call
 /// # Arguments
 ///
@@ -67,6 +84,7 @@ macro_rules! compose_extrinsic_offline {
     $genesis_or_current_hash: expr,
     $runtime_spec_version: expr,
     $transaction_version: expr) => {{
+        use sp_core::Pair;
         use $crate::primitives::{
             GenericAddress, GenericExtra, SignedPayload, UncheckedExtrinsicV4,
         };
@@ -100,6 +118,46 @@ macro_rules! compose_extrinsic_offline {
     }};
 }
 
+/// Generates an raw extrinsic for a given module and call passed as a &str.
+/// # Arguments
+///
+/// * 'api' - This instance of API. If the *signer* field is not set, an unsigned extrinsic will be generated.
+/// * 'raw' - RawParameter
+/// * 'args' - Optional sequence of arguments of the call. They are not checked against the metadata.
+/// As of now the user needs to check himself that the correct arguments are supplied.
+#[macro_export]
+#[cfg(feature = "std")]
+macro_rules! compose_raw_extrinsic {
+    ($api: expr,
+	$raw: expr
+	$(, $args: expr) *) => {{
+        #[allow(unused_imports)] // For when extrinsic does not use Compact
+        use $crate::codec::Compact;
+        use $crate::log::debug;
+        use $crate::primitives::UncheckedExtrinsicV4;
+        use $crate::sp_runtime::generic::Era;
+
+        debug!("Composing raw extrinsic {:?}", $raw);
+        if let Some(signer) = $api.signer.clone() {
+            $crate::compose_extrinsic_offline!(
+                signer,
+                $raw,
+                $api.get_nonce().unwrap(),
+                Era::Immortal,
+                $api.genesis_hash,
+                $api.genesis_hash,
+                $api.runtime_version.spec_version,
+                $api.runtime_version.transaction_version
+            )
+        } else {
+            UncheckedExtrinsicV4 {
+                signature: None,
+                function: $raw,
+            }
+        }
+    }};
+}
+
 /// Generates an Unchecked extrinsic for a given module and call passed as a &str.
 /// # Arguments
 ///
@@ -123,12 +181,12 @@ macro_rules! compose_extrinsic {
             use $crate::sp_runtime::generic::Era;
 
             debug!("Composing generic extrinsic for module {:?} and call {:?}", $module, $call);
-            let call = $crate::compose_call!($api.metadata.clone(), $module, $call $(, ($args)) *);
+            let call = $crate::compose_call!($api.metadata, $module, $call $(, ($args)) *);
 
             if let Some(signer) = $api.signer.clone() {
                 $crate::compose_extrinsic_offline!(
                     signer,
-                    call.clone(),
+                    call,
                     $api.get_nonce().unwrap(),
                     Era::Immortal,
                     $api.genesis_hash,
@@ -139,7 +197,7 @@ macro_rules! compose_extrinsic {
             } else {
                 UncheckedExtrinsicV4 {
                     signature: None,
-                    function: call.clone(),
+                    function: call,
                 }
             }
 		}
