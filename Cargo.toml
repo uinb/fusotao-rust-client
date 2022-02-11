@@ -37,7 +37,7 @@ sp-runtime = { default-features = false, git = "https://github.com/paritytech/su
 support = { default-features = false, git = "https://github.com/paritytech/substrate.git", package = "frame-support", branch = "polkadot-v0.9.13" }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13" }
 # new parity repository
-metadata = { version = "14.0.0", default-features = false, git = "https://github.com/paritytech/frame-metadata.git", branch = "main", package = "frame-metadata", features = ["v13"] }
+metadata = { tag = "v14.1.0", default-features = false, git = "https://github.com/paritytech/frame-metadata.git", package = "frame-metadata", features = ["v13"] }
 # need to add this for the app_crypto macro
 sp-application-crypto = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", features = ["full_crypto"] }
 
