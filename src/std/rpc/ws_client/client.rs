@@ -7,13 +7,12 @@ use serde_json::Value;
 use sp_core::H256 as Hash;
 use ws::{connect, Result as WsResult};
 
-use crate::rpc::ws_client::on_extrinsic_msg_submit_only;
 use crate::std::rpc::json_req;
-use crate::std::rpc::ws_client::Subscriber;
 use crate::std::rpc::ws_client::{
-    on_extrinsic_msg_until_broadcast, on_extrinsic_msg_until_finalized,
-    on_extrinsic_msg_until_in_block, on_extrinsic_msg_until_ready, on_get_request_msg,
-    on_subscription_msg, OnMessageFn, RpcClient,
+    on_extrinsic_msg_submit_only, on_extrinsic_msg_until_broadcast,
+    on_extrinsic_msg_until_finalized, on_extrinsic_msg_until_in_block,
+    on_extrinsic_msg_until_ready, on_get_request_msg, on_subscription_msg, OnMessageFn, RpcClient,
+    Subscriber,
 };
 use crate::std::ApiClientError;
 use crate::std::ApiResult;

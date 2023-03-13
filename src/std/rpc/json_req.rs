@@ -129,6 +129,14 @@ pub fn state_get_keys(key: StorageKey, at_block: Option<Hash>) -> Value {
     )
 }
 
+pub fn state_get_pairs(key: StorageKey, at_block: Option<Hash>) -> Value {
+    json_req(
+        "state_getPairs",
+        vec![to_value(key).unwrap(), to_value(at_block).unwrap()],
+        1,
+    )
+}
+
 pub fn author_submit_extrinsic(xthex_prefixed: &str) -> Value {
     author_submit_extrinsic_with_id(xthex_prefixed, REQUEST_TRANSFER)
 }

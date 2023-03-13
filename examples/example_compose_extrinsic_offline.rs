@@ -18,7 +18,7 @@
 
 use clap::{load_yaml, App};
 
-use node_template_runtime::{BalancesCall, Call, Header};
+use node_template_runtime::{BalancesCall, Header, RuntimeCall};
 use sp_core::crypto::Pair;
 use sp_keyring::AccountKeyring;
 use sp_runtime::MultiAddress;
@@ -52,7 +52,7 @@ fn main() {
     #[allow(clippy::redundant_clone)]
     let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
         api.clone().signer.unwrap(),
-        Call::Balances(BalancesCall::transfer {
+        RuntimeCall::Balances(BalancesCall::transfer {
             dest: to.clone(),
             value: 42
         }),

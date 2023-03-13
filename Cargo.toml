@@ -11,7 +11,6 @@ members = [
 	"client-keystore",
 	"node-api",
 	"test-no-std",
-	"tutorials/api-client-tutorial",
 ]
 
 [dependencies]
@@ -38,6 +37,7 @@ support = { version = "4.0.0-dev", default-features = false, git = "https://gith
 sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 # need to add this for the app_crypto macro
 sp-application-crypto = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", features = ["full_crypto"] }
+jsonrpsee = {version = "0.15.1", features = [ "macros", "ws-client", "client-ws-transport" ] }
 
 # local deps
 ac-compose-macros = { path = "compose-macros", default-features = false }

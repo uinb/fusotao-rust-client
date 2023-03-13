@@ -25,7 +25,7 @@ use sp_core::H256 as Hash;
 // This module depends on node_runtime.
 // To avoid dependency collisions, node_runtime has been removed from the substrate-api-client library.
 // Replace this crate by your own if you run a custom substrate node to get your custom events.
-use node_template_runtime::Event;
+use node_template_runtime::RuntimeEvent;
 
 use substrate_api_client::rpc::WsRpcClient;
 use substrate_api_client::utils::FromHexString;
@@ -47,25 +47,25 @@ fn main() {
 
         let _unhex = Vec::from_hex(event_str).unwrap();
         let mut _er_enc = _unhex.as_slice();
-        let _events = Vec::<system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
+        let _events = Vec::<system::EventRecord<RuntimeEvent, Hash>>::decode(&mut _er_enc);
         match _events {
             Ok(evts) => {
                 for evr in &evts {
                     println!("decoded: {:?} {:?}", evr.phase, evr.event);
                     match &evr.event {
-                        Event::Balances(be) => {
-                            println!(">>>>>>>>>> balances event: {:?}", be);
-                            match &be {
-                                balances::Event::Transfer { from, to, amount } => {
-                                    println!("Transactor: {:?}", from);
-                                    println!("Destination: {:?}", to);
-                                    println!("Value: {:?}", amount);
-                                    return;
-                                }
-                                _ => {
-                                    debug!("ignoring unsupported balances event");
-                                }
-                            }
+                        RuntimeEvent::Balances(be) => {
+                            // println!(">>>>>>>>>> balances event: {:?}", be);
+                            // match &be {
+                            //     balances::BalancesEvent::Transfer { from, to, amount } => {
+                            //         println!("Transactor: {:?}", from);
+                            //         println!("Destination: {:?}", to);
+                            //         println!("Value: {:?}", amount);
+                            //         return;
+                            //     }
+                            //     _ => {
+                            //         debug!("ignoring unsupported balances event");
+                            //     }
+                            // }
                         }
                         _ => debug!("ignoring unsupported module event: {:?}", evr.event),
                     }
