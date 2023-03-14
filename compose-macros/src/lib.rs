@@ -111,11 +111,8 @@ macro_rules! compose_extrinsic_offline {
 #[macro_export]
 #[cfg(feature = "std")]
 macro_rules! compose_extrinsic {
-	($api: expr,
-	$module: expr,
-	$call: expr
-	$(, $args: expr) *) => {
-		{
+    ($api: expr, $module: expr, $call: expr$ (, $args: expr) *) => {
+        {
             #[allow(unused_imports)] // For when extrinsic does not use Compact
             use $crate::codec::Compact;
             use $crate::log::debug;
@@ -142,6 +139,6 @@ macro_rules! compose_extrinsic {
                     function: call.clone(),
                 }
             }
-		}
+        }
     };
 }

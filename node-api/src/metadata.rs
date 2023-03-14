@@ -26,7 +26,7 @@ use frame_metadata::{
     StorageEntryMetadata, META_RESERVED,
 };
 use frame_support::serde::Serialize;
-use scale_info::{form::PortableForm, Type, Variant};
+use scale_info::{form::PortableForm, Type, TypeDefVariant, Variant};
 use sp_core::storage::StorageKey;
 use std::{collections::HashMap, convert::TryFrom};
 
@@ -42,6 +42,9 @@ pub enum MetadataError {
     /// Call is not in metadata.
     #[error("Call {0} not found")]
     CallNotFound(&'static str),
+    /// Call is not in metadata.
+    #[error("Call {0} not found")]
+    CallableNotFound(u8, u8),
     /// Event is not in metadata.
     #[error("Pallet {0}, Event {0} not found")]
     EventNotFound(u8, u8),
@@ -74,6 +77,7 @@ pub enum MetadataError {
 pub struct Metadata {
     metadata: RuntimeMetadataLastVersion,
     pallets: HashMap<String, PalletMetadata>,
+    calls: HashMap<(u8, u8), CallMetadata>,
     events: HashMap<(u8, u8), EventMetadata>,
     errors: HashMap<(u8, u8), ErrorMetadata>,
 }
@@ -84,6 +88,14 @@ impl Metadata {
         self.pallets
             .get(name)
             .ok_or_else(|| MetadataError::PalletNotFound(name.to_string()))
+    }
+
+    pub fn call(&self, pallet_index: u8, call_index: u8) -> Result<&CallMetadata, MetadataError> {
+        let call = self
+            .calls
+            .get(&(pallet_index, call_index))
+            .ok_or(MetadataError::CallableNotFound(pallet_index, call_index))?;
+        Ok(call)
     }
 
     /// Returns the metadata for the event at the given pallet and event indices.
@@ -202,6 +214,7 @@ impl Metadata {
             }
         }
     }
+
     pub fn print_pallets_with_constants(&self) {
         for m in self.pallets.values() {
             if !m.constants.is_empty() {
@@ -209,6 +222,7 @@ impl Metadata {
             }
         }
     }
+
     pub fn print_pallet_with_storages(&self) {
         for m in self.pallets.values() {
             if !m.storage.is_empty() {
@@ -320,6 +334,7 @@ impl PalletMetadata {
         }
         println!();
     }
+
     pub fn print_storages(&self) {
         println!(
             "----------------- Storages for Pallet: {} -----------------\n",
@@ -332,6 +347,33 @@ impl PalletMetadata {
             );
         }
         println!();
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CallMetadata {
+    pallet: String,
+    call: String,
+    variant: Variant<PortableForm>,
+}
+
+impl CallMetadata {
+    pub fn pallet(&self) -> &str {
+        &self.pallet
+    }
+
+    pub fn call(&self) -> &str {
+        &self.call
+    }
+
+    pub fn variant(&self) -> &Variant<PortableForm> {
+        &self.variant
+    }
+
+    pub fn print(&self) {
+        println!("Name: {}", self.call());
+        println!("Variant: {:?}", self.variant());
+        println!()
     }
 }
 
@@ -419,17 +461,18 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
             _ => return Err(InvalidMetadataError::InvalidVersion),
         };
 
-        let get_type_def_variant = |type_id: u32| {
-            let ty = metadata
-                .types
-                .resolve(type_id)
-                .ok_or(InvalidMetadataError::MissingType(type_id))?;
-            if let scale_info::TypeDef::Variant(var) = ty.type_def() {
-                Ok(var)
-            } else {
-                Err(InvalidMetadataError::TypeDefNotVariant(type_id))
-            }
-        };
+        let get_type_def_variant =
+            |type_id: u32| -> Result<&TypeDefVariant<PortableForm>, InvalidMetadataError> {
+                let ty = metadata
+                    .types
+                    .resolve(type_id)
+                    .ok_or(InvalidMetadataError::MissingType(type_id))?;
+                if let scale_info::TypeDef::Variant(var) = ty.type_def() {
+                    Ok(var)
+                } else {
+                    Err(InvalidMetadataError::TypeDefNotVariant(type_id))
+                }
+            };
         let pallets = metadata
             .pallets
             .iter()
@@ -469,6 +512,30 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
                 Ok((pallet.name.to_string(), pallet_metadata))
             })
             .collect::<Result<_, _>>()?;
+        let pallet_calls = metadata
+            .pallets
+            .iter()
+            .filter_map(|pallet| {
+                pallet.calls.as_ref().map(|call| {
+                    let type_def_variant = get_type_def_variant(call.ty.id())?;
+                    Ok((pallet, type_def_variant))
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let calls = pallet_calls
+            .iter()
+            .flat_map(|(pallet, type_def_variant)| {
+                type_def_variant.variants().iter().map(move |var| {
+                    let key = (pallet.index, var.index());
+                    let value = CallMetadata {
+                        pallet: pallet.name.clone(),
+                        call: var.name().clone(),
+                        variant: var.clone(),
+                    };
+                    (key, value)
+                })
+            })
+            .collect();
 
         let pallet_events = metadata
             .pallets
@@ -523,6 +590,7 @@ impl TryFrom<RuntimeMetadataPrefixed> for Metadata {
         Ok(Self {
             metadata,
             pallets,
+            calls,
             events,
             errors,
         })

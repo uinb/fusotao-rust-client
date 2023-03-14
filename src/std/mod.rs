@@ -475,11 +475,18 @@ where
         &self,
         key: StorageKey,
         at_block: Option<Hash>,
-    ) -> ApiResult<Option<Vec<String>>> {
+    ) -> ApiResult<Option<Vec<Vec<u8>>>> {
         let jsonreq = json_req::state_get_keys(key, at_block);
         let k = self.get_request(jsonreq)?;
         match k {
-            Some(keys) => Ok(Some(serde_json::from_str(&keys)?)),
+            Some(keys) => {
+                let deser: Vec<String> = serde_json::from_str(&keys)?;
+                let mut keys = vec![];
+                for k in deser.into_iter() {
+                    keys.push(Vec::from_hex(k)?);
+                }
+                Ok(Some(keys))
+            }
             None => Ok(None),
         }
     }
