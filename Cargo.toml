@@ -10,7 +10,6 @@ members = [
 	"compose-macros",
 	"client-keystore",
 	"node-api",
-	"test-no-std",
 ]
 
 [dependencies]
