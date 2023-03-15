@@ -30,14 +30,10 @@ jobs:
         #
         # `test-no-std` is only meant to check if the `substrate-api-client` compiles to `no_std`, hence
         # we omit clippy and test there.
-        check: [ cargo build --release --all --exclude test-no-std,
-                 cargo build --release -p test-no-std,
-
-                 cargo clippy --all --exclude test-no-std -- -D warnings,
+        check: [ cargo build --release --all
+                 cargo clippy --all
                  cargo clippy --examples -- -D warnings,
-
-                 cargo test --all --exclude test-no-std,
-
+                 cargo test --all --exclude
                  cargo fmt --all -- --check,
         ]
     steps:
