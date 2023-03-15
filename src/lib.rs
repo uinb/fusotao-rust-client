@@ -20,9 +20,6 @@
 #[cfg(feature = "std")]
 pub mod std;
 
-#[cfg(feature = "std")]
-pub mod extrinsic;
-
 pub mod utils;
 
 #[cfg(feature = "std")]

@@ -16,7 +16,7 @@
 */
 use std::sync::mpsc::{Receiver, SendError, Sender as ThreadOut};
 
-use ac_node_api::events::{EventsDecoder, Raw, RawEvent};
+use ac_node_api::decoder::{Raw, RawEvent, RuntimeDecoder};
 use codec::Decode;
 use log::{debug, error, info, warn};
 use serde_json::Value;
@@ -95,7 +95,7 @@ where
         &self,
         module: &str,
         variant: &str,
-        decoder: Option<EventsDecoder>,
+        decoder: Option<RuntimeDecoder>,
         receiver: &Receiver<String>,
     ) -> ApiResult<E> {
         let raw = self.wait_for_raw_event(module, variant, decoder, receiver)?;
@@ -106,12 +106,12 @@ where
         &self,
         module: &str,
         variant: &str,
-        decoder: Option<EventsDecoder>,
+        decoder: Option<RuntimeDecoder>,
         receiver: &Receiver<String>,
     ) -> ApiResult<RawEvent> {
         let event_decoder = match decoder {
             Some(d) => d,
-            None => EventsDecoder::new(self.metadata.clone()),
+            None => RuntimeDecoder::new(self.metadata.clone()),
         };
 
         loop {

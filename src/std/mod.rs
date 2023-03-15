@@ -28,6 +28,8 @@ use serde::de::DeserializeOwned;
 use sp_rpc::number::NumberOrHex;
 use transaction_payment::{InclusionFee, RuntimeDispatchInfo};
 
+pub type StoragePair = (Vec<u8>, Vec<u8>);
+
 use crate::rpc::json_req;
 
 pub trait RpcClient {
@@ -335,6 +337,17 @@ where
             .map_err(|e| e.into())
     }
 
+    pub fn get_storage_double_map_partial_prefix<K: Encode>(
+        &self,
+        storage_prefix: &'static str,
+        storage_key_name: &'static str,
+        first: &K,
+    ) -> ApiResult<StorageKey> {
+        self.metadata
+            .storage_double_map_partial_key(storage_prefix, storage_key_name, first)
+            .map_err(|e| e.into())
+    }
+
     pub fn get_storage_double_map<K: Encode, Q: Encode, V: Decode + Clone>(
         &self,
         storage_prefix: &'static str,
@@ -375,6 +388,27 @@ where
 
         match s {
             Some(storage) => Ok(Some(Vec::from_hex(storage)?)),
+            None => Ok(None),
+        }
+    }
+
+    // TODO
+    pub fn get_opaque_storage_pairs_by_key_hash(
+        &self,
+        key: StorageKey,
+        at_block: Option<Hash>,
+    ) -> ApiResult<Option<Vec<StoragePair>>> {
+        let jsonreq = json_req::state_get_pairs(key, at_block);
+        let s = self.get_request(jsonreq)?;
+        match s {
+            Some(storage) => {
+                let deser: Vec<(String, String)> = serde_json::from_str(&storage)?;
+                let mut kv = vec![];
+                for (k, v) in deser.into_iter() {
+                    kv.push((Vec::from_hex(k)?, Vec::from_hex(v)?));
+                }
+                Ok(Some(kv))
+            }
             None => Ok(None),
         }
     }
@@ -441,11 +475,18 @@ where
         &self,
         key: StorageKey,
         at_block: Option<Hash>,
-    ) -> ApiResult<Option<Vec<String>>> {
+    ) -> ApiResult<Option<Vec<Vec<u8>>>> {
         let jsonreq = json_req::state_get_keys(key, at_block);
         let k = self.get_request(jsonreq)?;
         match k {
-            Some(keys) => Ok(Some(serde_json::from_str(&keys)?)),
+            Some(keys) => {
+                let deser: Vec<String> = serde_json::from_str(&keys)?;
+                let mut keys = vec![];
+                for k in deser.into_iter() {
+                    keys.push(Vec::from_hex(k)?);
+                }
+                Ok(Some(keys))
+            }
             None => Ok(None),
         }
     }

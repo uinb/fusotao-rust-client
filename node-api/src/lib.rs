@@ -15,8 +15,9 @@
 
 use codec::Decode;
 
+pub mod decoder;
 pub mod error;
-pub mod events;
+//pub mod events;
 pub mod metadata;
 pub mod storage;
 

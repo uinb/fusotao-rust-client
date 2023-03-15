@@ -20,7 +20,7 @@
 //! This file is mostly subxt.
 
 use crate::{
-    events::EventsDecodingError,
+    decoder::DecodingError,
     metadata::{InvalidMetadataError, Metadata, MetadataError},
 };
 use sp_core::crypto::SecretStringError;
@@ -54,9 +54,9 @@ pub enum Error {
     /// Runtime error.
     #[error("Runtime error: {0}")]
     Runtime(#[from] RuntimeError),
-    /// Events decoding error.
-    #[error("Events decoding error: {0}")]
-    EventsDecoding(#[from] EventsDecodingError),
+    /// Decoding error.
+    #[error("decoding error: {0}")]
+    Decoding(#[from] DecodingError),
     /// Other error.
     #[error("Other error: {0}")]
     Other(String),
@@ -121,7 +121,7 @@ impl RuntimeError {
                 error,
                 message: _,
             }) => {
-                let error = metadata.error(index, error)?;
+                let error = metadata.error(index, error[0])?;
                 Ok(Self::Module(PalletError {
                     pallet: error.pallet().to_string(),
                     error: error.error().to_string(),
@@ -135,6 +135,9 @@ impl RuntimeError {
             DispatchError::NoProviders => Ok(Self::NoProviders),
             DispatchError::Arithmetic(_math_error) => Ok(Self::Other("math_error".into())),
             DispatchError::Token(_token_error) => Ok(Self::Other("token error".into())),
+            DispatchError::Transactional(_transactional_error) => {
+                Ok(Self::Other("transactional error".into()))
+            }
             DispatchError::Other(msg) => Ok(Self::Other(msg.to_string())),
         }
     }
