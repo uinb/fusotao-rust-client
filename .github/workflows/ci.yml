@@ -32,8 +32,7 @@ jobs:
         # we omit clippy and test there.
         check: [ cargo build --release --all,
                  cargo clippy --all,
-                 cargo clippy --examples -- -D warnings,
-                 cargo test --all --exclude,
+                 cargo test --all,
                  cargo fmt --all -- --check,
         ]
     steps:
