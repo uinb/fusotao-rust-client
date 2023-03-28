@@ -153,7 +153,43 @@ pub fn author_submit_and_watch_extrinsic_with_id(xthex_prefixed: &str, id: u32) 
     json_req("author_submitAndWatchExtrinsic", vec![xthex_prefixed], id)
 }
 
-fn json_req<S: Serialize>(method: &str, params: S, id: u32) -> Value {
+// pub fn broker_trade(
+//     prover: AccountId,
+//     cmd: TradingCommand,
+//     signature: [u8; 32],
+//     nonce: u32,
+// ) -> Value {
+//     json_req(
+//         "broker_trade",
+//         vec![
+//             prover.to_hex(),
+//             cmd.to_hex(),
+//             signature.to_hex(),
+//             nonce.to_hex(),
+//         ],
+//         1,
+//     )
+// }
+
+// pub fn broker_register_trading_key(
+//     prover: AccountId,
+//     user_id: AccountId,
+//     x25519_pk: [u8; 32],
+//     sr25519_sig: [u8; 64],
+// ) -> Value {
+//     json_req(
+//         "broker_register",
+//         vec![
+//             prover.to_hex(),
+//             user_id.to_hex(),
+//             x25519_pk.to_hex(),
+//             sr25519_sig.to_hex(),
+//         ],
+//         1,
+//     )
+// }
+
+pub fn json_req<S: Serialize>(method: &str, params: S, id: u32) -> Value {
     json!({
         "method": method,
         "params": params,

@@ -20,6 +20,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, string::ToString, vec::Vec};
 
+use codec::Encode;
 use hex::FromHexError;
 use sp_core::storage::StorageKey;
 use sp_core::twox_128;
@@ -57,6 +58,19 @@ impl FromHexString for Hash {
             32 => Ok(Hash::from_slice(&vec)),
             _ => Err(hex::FromHexError::InvalidStringLength),
         }
+    }
+}
+
+pub trait ToHexString {
+    fn to_hex(&self) -> String;
+}
+
+impl<T: Encode> ToHexString for T {
+    fn to_hex(&self) -> String
+    where
+        Self: Encode,
+    {
+        format!("0x{}", hex::encode(self.encode()))
     }
 }
 

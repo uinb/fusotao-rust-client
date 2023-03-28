@@ -19,6 +19,7 @@ pub use transaction_payment::FeeDetails;
 
 pub mod error;
 pub mod rpc;
+pub mod trade;
 
 use std::convert::{TryFrom, TryInto};
 
