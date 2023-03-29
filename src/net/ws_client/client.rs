@@ -7,18 +7,18 @@ use serde_json::Value;
 use sp_core::H256 as Hash;
 use ws::{connect, Result as WsResult};
 
-use crate::std::rpc::json_req;
-use crate::std::rpc::ws_client::{
+use crate::net::ws_client::{
     on_extrinsic_msg_submit_only, on_extrinsic_msg_until_broadcast,
     on_extrinsic_msg_until_finalized, on_extrinsic_msg_until_in_block,
     on_extrinsic_msg_until_ready, on_get_request_msg, on_subscription_msg, OnMessageFn, RpcClient,
     Subscriber,
 };
-use crate::std::ApiClientError;
-use crate::std::ApiResult;
-use crate::std::FromHexString;
-use crate::std::RpcClient as RpcClientTrait;
-use crate::std::XtStatus;
+use crate::net::RpcClient as RpcClientTrait;
+use crate::rpc::json_req;
+use crate::rpc::ApiClientError;
+use crate::rpc::ApiResult;
+use crate::rpc::XtStatus;
+use crate::FromHexString;
 
 #[derive(Debug, Clone)]
 pub struct WsRpcClient {

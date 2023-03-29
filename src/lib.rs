@@ -14,23 +14,89 @@
    limitations under the License.
 
 */
-#![cfg_attr(not(feature = "std"), no_std)]
 #![feature(assert_matches)]
+pub mod net;
+pub mod rpc;
 
-#[cfg(feature = "std")]
-pub mod std;
+pub use ac_compose_macros::*;
+pub use ac_node_api as runtime_types;
+pub use ac_primitives as primitives;
+pub use net::RpcClient;
+pub use rpc::Api;
 
-pub mod utils;
+pub trait FromHexString {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized;
+}
 
-#[cfg(feature = "std")]
-pub use crate::std::*;
+impl FromHexString for Vec<u8> {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError> {
+        let hexstr = hex
+            .trim_matches('\"')
+            .to_string()
+            .trim_start_matches("0x")
+            .to_string();
+        hex::decode(&hexstr)
+    }
+}
 
-pub use ac_primitives::{
-    AccountData, AccountDataGen, AccountInfo, AccountInfoGen, Balance, BlockNumber, GenericAddress,
-    GenericExtra, Hash, Index, Moment, RefCount, UncheckedExtrinsicV4,
-};
+impl FromHexString for primitives::Hash {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError> {
+        let vec = Vec::from_hex(hex)?;
+        match vec.len() {
+            32 => Ok(primitives::Hash::from_slice(&vec)),
+            _ => Err(hex::FromHexError::InvalidStringLength),
+        }
+    }
+}
 
-#[cfg(feature = "std")]
-pub use ac_compose_macros::compose_extrinsic;
+pub trait ToHexString {
+    fn to_hex(&self) -> String;
+}
 
-pub use ac_compose_macros::{compose_call, compose_extrinsic_offline};
+impl<T: codec::Encode> ToHexString for T {
+    fn to_hex(&self) -> String
+    where
+        Self: codec::Encode,
+    {
+        format!("0x{}", hex::encode(self.encode()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_hextstr_to_vec() {
+        assert_eq!(Vec::from_hex("0x01020a".to_string()), Ok(vec!(1, 2, 10)));
+        assert_eq!(
+            Vec::from_hex("null".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'n', index: 0 })
+        );
+        assert_eq!(
+            Vec::from_hex("0x0q".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'q', index: 1 })
+        );
+    }
+
+    #[test]
+    fn test_hextstr_to_hash() {
+        assert_eq!(
+            primitives::Hash::from_hex(
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
+            ),
+            Ok(primitives::Hash::from([0u8; 32]))
+        );
+        assert_eq!(
+            primitives::Hash::from_hex("0x010000000000000000".to_string()),
+            Err(hex::FromHexError::InvalidStringLength)
+        );
+        assert_eq!(
+            primitives::Hash::from_hex("0x0q".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'q', index: 1 })
+        );
+    }
+}

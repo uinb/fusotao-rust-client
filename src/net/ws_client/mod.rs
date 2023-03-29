@@ -14,21 +14,20 @@
    limitations under the License.
 
 */
-use std::sync::mpsc::{Receiver, SendError, Sender as ThreadOut};
-
 use ac_node_api::decoder::{Raw, RawEvent, RuntimeDecoder};
 use codec::Decode;
 use log::{debug, error, info, warn};
 use serde_json::Value;
 use sp_core::Pair;
 use sp_runtime::MultiSignature;
+use std::sync::mpsc::{Receiver, SendError, Sender as ThreadOut};
 use ws::{CloseCode, Error, Handler, Handshake, Message, Result as WsResult, Sender};
 
-use crate::std::rpc::RpcClientError;
-use crate::std::{json_req, FromHexString, RpcClient as RpcClientTrait, XtStatus};
-use crate::std::{Api, ApiResult};
-use crate::utils;
+use crate::net::RpcClientError;
+use crate::rpc::{json_req, XtStatus};
+use crate::{rpc::ApiResult, Api, FromHexString};
 
+use crate::RpcClient as RpcClientTrait;
 pub use client::WsRpcClient;
 
 pub mod client;
@@ -76,7 +75,7 @@ where
 {
     pub fn subscribe_events(&self, sender: ThreadOut<String>) -> ApiResult<()> {
         debug!("subscribing to events");
-        let key = utils::storage_key("System", "Events");
+        let key = crate::rpc::storage_key("System", "Events");
         let jsonreq = json_req::state_subscribe_storage(vec![key]).to_string();
         self.client
             .start_subscriber(jsonreq, sender)

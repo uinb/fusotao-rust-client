@@ -15,7 +15,7 @@ members = [
 [dependencies]
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 log = { version = "0.4.17", optional = true }
-metadata = { version = "15.0.0", default-features = false, package = "frame-metadata", features = ["v14"] }
+frame-metadata = { version = "15.0.0", default-features = false, package = "frame-metadata", features = ["v14"] }
 primitive-types = { version = "0.11.1", optional = true, features = ["codec"] }
 serde = { version = "1.0.136", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.79", optional = true }
@@ -63,7 +63,7 @@ std = [
 	"sp-application-crypto/std",
 	"sp-core/std",
 	"codec/std",
-	"metadata/std",
+	"frame-metadata/std",
 	"sp-version",
 	"balances",
 	"system",
