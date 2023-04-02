@@ -14,9 +14,11 @@
    limitations under the License.
 
 */
+#![feature(result_option_inspect)]
 #![feature(assert_matches)]
 pub mod net;
 pub mod rpc;
+pub mod trade;
 
 pub use ac_compose_macros::*;
 pub use ac_node_api as runtime_types;
@@ -48,6 +50,23 @@ impl FromHexString for primitives::Hash {
             32 => Ok(primitives::Hash::from_slice(&vec)),
             _ => Err(hex::FromHexError::InvalidStringLength),
         }
+    }
+}
+
+pub trait DecodeHexString {
+    fn decode_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized;
+}
+
+// TODO
+impl<T: codec::Decode> DecodeHexString for T {
+    fn decode_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized,
+    {
+        let raw = Vec::from_hex(hex)?;
+        T::decode(&mut &raw[..]).map_err(|_| hex::FromHexError::InvalidStringLength)
     }
 }
 

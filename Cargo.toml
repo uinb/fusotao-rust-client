@@ -13,8 +13,12 @@ members = [
 ]
 
 [dependencies]
+async-trait = "0.1.68"
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 log = { version = "0.4.17", optional = true }
+dashmap = "5.4.0"
+tokio = { version = "1.16", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 frame-metadata = { version = "15.0.0", default-features = false, package = "frame-metadata", features = ["v14"] }
 primitive-types = { version = "0.11.1", optional = true, features = ["codec"] }
 serde = { version = "1.0.136", optional = true, features = ["derive"] }
@@ -36,7 +40,7 @@ support = { version = "4.0.0-dev", default-features = false, git = "https://gith
 sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 # need to add this for the app_crypto macro
 sp-application-crypto = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", features = ["full_crypto"] }
-jsonrpsee = {version = "0.15.1", features = [ "macros", "ws-client", "client-ws-transport" ] }
+jsonrpsee = {version = "0.16.2", features = [ "full" ] }
 
 # local deps
 ac-compose-macros = { path = "compose-macros", default-features = false }

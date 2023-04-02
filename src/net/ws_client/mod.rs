@@ -143,6 +143,7 @@ pub fn on_get_request_msg(msg: Message, out: Sender, result: ThreadOut<String>) 
         .unwrap_or_else(|_| warn!("Could not close Websocket normally"));
 
     info!("Got get_request_msg {}", msg);
+    println!("{}", msg);
     let result_str = serde_json::from_str(msg.as_text()?)
         .map(|v: serde_json::Value| v["result"].to_string())
         .map_err(|e| Box::new(RpcClientError::Serde(e)))?;
@@ -364,7 +365,7 @@ fn result_from_json_response(resp: &str) -> RpcResult<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rpc::RpcClientError;
+    use crate::net::RpcClientError;
     use std::assert_matches::assert_matches;
     use std::fmt::Debug;
 

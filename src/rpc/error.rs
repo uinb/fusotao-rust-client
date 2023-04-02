@@ -13,7 +13,6 @@ pub enum Error {
     MetadataFetch,
     #[error("Operation needs a signer to be set in the api")]
     NoSigner,
-    #[cfg(feature = "ws-client")]
     #[error("WebSocket Error: {0}")]
     WebSocket(#[from] ws::Error),
     #[error("RpcClient error: {0}")]
