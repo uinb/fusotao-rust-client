@@ -237,6 +237,14 @@ where
         }
     }
 
+    pub fn get_beefy_finalized_head(&self) -> ApiResult<Option<Hash>> {
+        let h = self.get_request(json_req::beefy_get_finalized_head())?;
+        match h {
+            Some(hash) => Ok(Some(Hash::from_hex(hash)?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn get_header<H>(&self, hash: Option<Hash>) -> ApiResult<Option<H>>
     where
         H: Header + DeserializeOwned,
