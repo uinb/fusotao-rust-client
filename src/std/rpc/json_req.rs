@@ -50,6 +50,10 @@ pub fn chain_subscribe_finalized_heads() -> Value {
     json_req("chain_subscribeFinalizedHeads", Value::Null, 1)
 }
 
+pub fn beefy_get_finalized_head() -> Value {
+    json_req("beefy_getFinalizedHead", Value::Null, 1)
+}
+
 pub fn payment_query_fee_details(xthex_prefixed: &str, at_block: Option<Hash>) -> Value {
     json_req(
         "payment_queryFeeDetails",
