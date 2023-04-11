@@ -1,28 +1,41 @@
-use std::sync::mpsc::channel;
-use std::sync::mpsc::Sender as ThreadOut;
-use std::thread;
-
-use log::info;
 use serde_json::Value;
 use sp_core::H256 as Hash;
-use ws::{connect, Result as WsResult};
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Sender;
+use ws::Result as WsResult;
 
-use crate::std::rpc::json_req;
-use crate::std::rpc::ws_client::{
-    on_extrinsic_msg_submit_only, on_extrinsic_msg_until_broadcast,
-    on_extrinsic_msg_until_finalized, on_extrinsic_msg_until_in_block,
-    on_extrinsic_msg_until_ready, on_get_request_msg, on_subscription_msg, OnMessageFn, RpcClient,
-    Subscriber,
-};
-use crate::std::ApiClientError;
-use crate::std::ApiResult;
-use crate::std::FromHexString;
-use crate::std::RpcClient as RpcClientTrait;
-use crate::std::XtStatus;
+// use crate::net::ws_client::{
+//     on_extrinsic_msg_submit_only, on_extrinsic_msg_until_broadcast,
+//     on_extrinsic_msg_until_finalized, on_extrinsic_msg_until_in_block,
+//     on_extrinsic_msg_until_ready, on_get_request_msg, OnMessageFn, RpcClient,
+// };
+use crate::net::RpcClient as RpcClientTrait;
+use crate::rpc::json_req;
+use crate::rpc::ApiClientError;
+use crate::rpc::ApiResult;
+use crate::rpc::XtStatus;
+use crate::FromHexString;
 
 #[derive(Debug, Clone)]
 pub struct WsRpcClient {
     url: String,
+}
+
+pub struct Session {
+    pub sink: ws::Sender,
+    pub result_in: ThreadOut<String>,
+}
+
+impl Handler for Session {
+    fn on_open(&mut self, _: Handshake) -> WsResult<()> {
+        info!("sending request: {}", self.request);
+        self.out.send(self.request.clone())?;
+        Ok(())
+    }
+
+    fn on_message(&mut self, msg: Message) -> WsResult<()> {
+        (self.on_message_fn)(msg, self.out.clone(), self.result.clone())
+    }
 }
 
 impl WsRpcClient {
@@ -30,6 +43,16 @@ impl WsRpcClient {
         WsRpcClient {
             url: url.to_string(),
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl JsonRpcClient for WsRpcClient {
+    async fn request(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> ApiResult<serde_json::Value> {
     }
 }
 
@@ -91,16 +114,6 @@ impl RpcClientTrait for WsRpcClient {
     }
 }
 
-impl Subscriber for WsRpcClient {
-    fn start_subscriber(
-        &self,
-        json_req: String,
-        result_in: ThreadOut<String>,
-    ) -> Result<(), ws::Error> {
-        self.start_subscriber(json_req, result_in)
-    }
-}
-
 impl WsRpcClient {
     pub fn get(&self, json_req: String, result_in: ThreadOut<String>) -> WsResult<()> {
         self.start_rpc_client_thread(json_req, result_in, on_get_request_msg)
@@ -142,10 +155,6 @@ impl WsRpcClient {
         self.start_rpc_client_thread(json_req, result_in, on_extrinsic_msg_until_finalized)
     }
 
-    pub fn start_subscriber(&self, json_req: String, result_in: ThreadOut<String>) -> WsResult<()> {
-        self.start_rpc_client_thread(json_req, result_in, on_subscription_msg)
-    }
-
     fn start_rpc_client_thread(
         &self,
         jsonreq: String,
@@ -157,7 +166,7 @@ impl WsRpcClient {
             thread::Builder::new()
                 .name("client".to_owned())
                 .spawn(move || -> WsResult<()> {
-                    connect(url, |out| RpcClient {
+                    ws::connect(url, |out| RpcClient {
                         out,
                         request: jsonreq.clone(),
                         result: result_in.clone(),

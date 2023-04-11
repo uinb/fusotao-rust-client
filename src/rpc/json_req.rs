@@ -130,11 +130,12 @@ pub fn state_get_keys(key: StorageKey, at_block: Option<Hash>) -> Value {
 }
 
 pub fn state_get_pairs(key: StorageKey, at_block: Option<Hash>) -> Value {
-    json_req(
-        "state_getPairs",
-        vec![to_value(key).unwrap(), to_value(at_block).unwrap()],
-        1,
-    )
+    crate::rpc!(state_getPairs, [key, at_block])
+    // json_req(
+    //     "state_getPairs",
+    //     vec![to_value(key).unwrap(), to_value(at_block).unwrap()],
+    //     1,
+    // )
 }
 
 pub fn author_submit_extrinsic(xthex_prefixed: &str) -> Value {
@@ -153,7 +154,7 @@ pub fn author_submit_and_watch_extrinsic_with_id(xthex_prefixed: &str, id: u32) 
     json_req("author_submitAndWatchExtrinsic", vec![xthex_prefixed], id)
 }
 
-fn json_req<S: Serialize>(method: &str, params: S, id: u32) -> Value {
+pub fn json_req<S: Serialize>(method: &str, params: S, id: u32) -> Value {
     json!({
         "method": method,
         "params": params,

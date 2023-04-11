@@ -14,23 +14,166 @@
    limitations under the License.
 
 */
-#![cfg_attr(not(feature = "std"), no_std)]
+#![feature(result_flattening)]
+#![feature(result_option_inspect)]
 #![feature(assert_matches)]
+pub mod net;
+pub mod rpc;
+//pub mod trade;
 
-#[cfg(feature = "std")]
-pub mod std;
+pub use ac_compose_macros::*;
+pub use ac_node_api as runtime_types;
+pub use ac_primitives as primitives;
+pub use net::JsonRpcClient;
+pub use rpc::Api;
 
-pub mod utils;
+pub trait FromHexString {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized;
+}
 
-#[cfg(feature = "std")]
-pub use crate::std::*;
+impl FromHexString for Vec<u8> {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError> {
+        let hexstr = hex
+            .trim_matches('\"')
+            .to_string()
+            .trim_start_matches("0x")
+            .to_string();
+        hex::decode(&hexstr)
+    }
+}
 
-pub use ac_primitives::{
-    AccountData, AccountDataGen, AccountInfo, AccountInfoGen, Balance, BlockNumber, GenericAddress,
-    GenericExtra, Hash, Index, Moment, RefCount, UncheckedExtrinsicV4,
-};
+impl FromHexString for primitives::Hash {
+    fn from_hex(hex: String) -> Result<Self, hex::FromHexError> {
+        let vec = Vec::from_hex(hex)?;
+        match vec.len() {
+            32 => Ok(primitives::Hash::from_slice(&vec)),
+            _ => Err(hex::FromHexError::InvalidStringLength),
+        }
+    }
+}
 
-#[cfg(feature = "std")]
-pub use ac_compose_macros::compose_extrinsic;
+pub trait DecodeHexString {
+    fn decode_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized;
+}
 
-pub use ac_compose_macros::{compose_call, compose_extrinsic_offline};
+// TODO
+impl<T: codec::Decode> DecodeHexString for T {
+    fn decode_hex(hex: String) -> Result<Self, hex::FromHexError>
+    where
+        Self: Sized,
+    {
+        let raw = Vec::from_hex(hex)?;
+        T::decode(&mut &raw[..]).map_err(|_| hex::FromHexError::InvalidStringLength)
+    }
+}
+
+pub trait ToHexString {
+    fn to_hex(&self) -> String;
+}
+
+impl<T: codec::Encode> ToHexString for T {
+    fn to_hex(&self) -> String
+    where
+        Self: codec::Encode,
+    {
+        format!("0x{}", hex::encode(self.encode()))
+    }
+}
+
+#[macro_export]
+macro_rules! rpc {
+    ($pallet: ident, $method: ident, [$($args: expr),*]) => {
+        {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": format!("{}_{}", stringify!($pallet), stringify!($method)),
+                "params": [$($args),*],
+            })
+        }
+    };
+    ($method: ident, [$($args: expr),*]) => {
+        {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": stringify!(method),
+                "params": [$($args),*],
+            })
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! storage {
+    (value => $pallet: ident, $storage: ident, $block: expr) => {
+        {
+            let mut key = twox_128(stringify!($pallet).as_bytes()).to_vec();
+            key.extend(&twox_128(stringify!($storage).as_bytes()));
+            let key = format!("0x{}", hex::encode(key));
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "state_getStorage",
+                "params": [key, $block],
+            })
+        }
+    };
+    (map => $pallet: ident, $storage: ident, $metadata: expr, $key: expr, $block: expr) => {
+        {
+            let mut prefix = twox_128(stringify!($pallet).as_bytes()).to_vec();
+            prefix.extend(&twox_128(stringify!($storage).as_bytes()));
+            let key = $metadata.pallet(stringify!($pallet))
+                          .expect("pallet not exists")
+                          .storage(stringify!($storage))
+                          .expect("storage not exists")
+                          .hasher()
+                          .encode(&mut key);
+            prefix.extend(&key);
+            let key = format!("0x{}", hex::encode(key));
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "state_getStorage",
+                "params": [key, $block],
+            })
+        }
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_hextstr_to_vec() {
+        assert_eq!(Vec::from_hex("0x01020a".to_string()), Ok(vec!(1, 2, 10)));
+        assert_eq!(
+            Vec::from_hex("null".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'n', index: 0 })
+        );
+        assert_eq!(
+            Vec::from_hex("0x0q".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'q', index: 1 })
+        );
+    }
+
+    #[test]
+    fn test_hextstr_to_hash() {
+        assert_eq!(
+            primitives::Hash::from_hex(
+                "0x0000000000000000000000000000000000000000000000000000000000000000".to_string()
+            ),
+            Ok(primitives::Hash::from([0u8; 32]))
+        );
+        assert_eq!(
+            primitives::Hash::from_hex("0x010000000000000000".to_string()),
+            Err(hex::FromHexError::InvalidStringLength)
+        );
+        assert_eq!(
+            primitives::Hash::from_hex("0x0q".to_string()),
+            Err(hex::FromHexError::InvalidHexCharacter { c: 'q', index: 1 })
+        );
+    }
+}
