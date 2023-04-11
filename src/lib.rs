@@ -14,16 +14,17 @@
    limitations under the License.
 
 */
+#![feature(result_flattening)]
 #![feature(result_option_inspect)]
 #![feature(assert_matches)]
 pub mod net;
 pub mod rpc;
-pub mod trade;
+//pub mod trade;
 
 pub use ac_compose_macros::*;
 pub use ac_node_api as runtime_types;
 pub use ac_primitives as primitives;
-pub use net::RpcClient;
+pub use net::JsonRpcClient;
 pub use rpc::Api;
 
 pub trait FromHexString {
@@ -81,6 +82,63 @@ impl<T: codec::Encode> ToHexString for T {
     {
         format!("0x{}", hex::encode(self.encode()))
     }
+}
+
+#[macro_export]
+macro_rules! rpc {
+    ($pallet: ident, $method: ident, [$($args: expr),*]) => {
+        {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": format!("{}_{}", stringify!($pallet), stringify!($method)),
+                "params": [$($args),*],
+            })
+        }
+    };
+    ($method: ident, [$($args: expr),*]) => {
+        {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": stringify!(method),
+                "params": [$($args),*],
+            })
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! storage {
+    (value => $pallet: ident, $storage: ident, $block: expr) => {
+        {
+            let mut key = twox_128(stringify!($pallet).as_bytes()).to_vec();
+            key.extend(&twox_128(stringify!($storage).as_bytes()));
+            let key = format!("0x{}", hex::encode(key));
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "state_getStorage",
+                "params": [key, $block],
+            })
+        }
+    };
+    (map => $pallet: ident, $storage: ident, $metadata: expr, $key: expr, $block: expr) => {
+        {
+            let mut prefix = twox_128(stringify!($pallet).as_bytes()).to_vec();
+            prefix.extend(&twox_128(stringify!($storage).as_bytes()));
+            let key = $metadata.pallet(stringify!($pallet))
+                          .expect("pallet not exists")
+                          .storage(stringify!($storage))
+                          .expect("storage not exists")
+                          .hasher()
+                          .encode(&mut key);
+            prefix.extend(&key);
+            let key = format!("0x{}", hex::encode(key));
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "state_getStorage",
+                "params": [key, $block],
+            })
+        }
+    };
 }
 
 #[cfg(test)]

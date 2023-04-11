@@ -1,12 +1,12 @@
-//pub mod jsonrpsee_client;
-pub mod ws_client;
+pub mod tungstenite_client;
 
-use crate::primitives::Hash;
-use crate::rpc::{ApiResult, XtStatus};
-use serde::Serialize;
+use crate::{
+    primitives::Hash,
+    rpc::{ApiResult, XtStatus},
+};
+pub use tungstenite_client::TungsteniteClient;
 
-pub use ws_client::WsRpcClient;
-
+// TODO deprecated
 pub trait RpcClient {
     /// Sends a RPC request that returns a String
     fn get_request(&self, jsonreq: serde_json::Value) -> ApiResult<String>;
@@ -16,12 +16,8 @@ pub trait RpcClient {
 }
 
 #[async_trait::async_trait]
-pub trait Client {
-    fn request<T: Serialize>(&self, req: T) -> ApiResult<serde_json::Value>;
-
-    async fn request_async<T>(&self, req: T) -> ApiResult<serde_json::Value>
-    where
-        T: Serialize + Send;
+pub trait JsonRpcClient {
+    async fn request(&self, req: serde_json::Value) -> ApiResult<Vec<u8>>;
 }
 
 #[derive(Debug, thiserror::Error)]
